@@ -1,5 +1,6 @@
-const { z } = require('zod');
-const { prisma, checkDbConnection } = require('../db/client');
+import { z } from 'zod';
+import { prisma, checkDbConnection } from '../db/client.js';
+
 
 // Validation Schemas
 const roadmapSaveSchema = z.object({
@@ -89,8 +90,9 @@ async function saveRoadmap(req, res, next) {
   }
 }
 
-module.exports = {
+export {
   getRoadmap,
   saveRoadmap,
   roadmapSaveSchema,
 };
+

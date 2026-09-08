@@ -1,11 +1,11 @@
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const { z } = require('zod');
-const { prisma } = require('../db/client');
-const { getJwtSecret } = require('../middleware/auth');
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import { z } from 'zod';
+import { prisma } from '../db/client.js';
+import { getJwtSecret } from '../middleware/auth.js';
 
 // Zod Validation Schemas
-const registerSchema = z.object({
+export const registerSchema = z.object({
   name: z.string().trim().min(1, 'Name is required').max(100, 'Name is too long'),
   email: z.string().trim().email('Invalid email address'),
   password: z.string().min(6, 'Password must be at least 6 characters long'),
@@ -14,7 +14,7 @@ const registerSchema = z.object({
   }).default('STUDENT'),
 });
 
-const loginSchema = z.object({
+export const loginSchema = z.object({
   email: z.string().trim().email('Invalid email address'),
   password: z.string().min(1, 'Password is required'),
 });
@@ -37,7 +37,7 @@ function generateToken(user) {
 /**
  * POST /api/auth/register
  */
-async function register(req, res, next) {
+export async function register(req, res, next) {
   try {
     const { name, email, password, role } = req.body;
     const normalizedEmail = email.toLowerCase().trim();
@@ -99,7 +99,7 @@ async function register(req, res, next) {
 /**
  * POST /api/auth/login
  */
-async function login(req, res, next) {
+export async function login(req, res, next) {
   try {
     const { email, password } = req.body;
     const normalizedEmail = email.toLowerCase().trim();
@@ -151,7 +151,7 @@ async function login(req, res, next) {
 /**
  * GET /api/auth/me
  */
-async function getMe(req, res, next) {
+export async function getMe(req, res, next) {
   try {
     const userId = req.user.userId;
 
@@ -188,11 +188,3 @@ async function getMe(req, res, next) {
     next(err);
   }
 }
-
-module.exports = {
-  register,
-  login,
-  getMe,
-  registerSchema,
-  loginSchema,
-};

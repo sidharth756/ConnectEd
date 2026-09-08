@@ -1,5 +1,6 @@
-const { z } = require('zod');
-const { prisma, checkDbConnection } = require('../db/client');
+import { z } from 'zod';
+import { prisma, checkDbConnection } from '../db/client.js';
+
 
 // Validation Schemas
 const alumniCreateSchema = z.object({
@@ -161,10 +162,11 @@ async function createAlumni(req, res, next) {
   }
 }
 
-module.exports = {
+export {
   getAlumni,
   getAlumniById,
   createAlumni,
   alumniCreateSchema,
   alumniQuerySchema,
 };
+

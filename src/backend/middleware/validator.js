@@ -1,7 +1,7 @@
 /**
  * Zod validation middleware factory
  */
-function validateBody(schema) {
+export function validateBody(schema) {
   return (req, res, next) => {
     try {
       req.body = schema.parse(req.body);
@@ -12,7 +12,7 @@ function validateBody(schema) {
   };
 }
 
-function validateQuery(schema) {
+export function validateQuery(schema) {
   return (req, res, next) => {
     try {
       req.query = schema.parse(req.query);
@@ -23,7 +23,7 @@ function validateQuery(schema) {
   };
 }
 
-function validateParams(schema) {
+export function validateParams(schema) {
   return (req, res, next) => {
     try {
       req.params = schema.parse(req.params);
@@ -33,9 +33,3 @@ function validateParams(schema) {
     }
   };
 }
-
-module.exports = {
-  validateBody,
-  validateQuery,
-  validateParams,
-};

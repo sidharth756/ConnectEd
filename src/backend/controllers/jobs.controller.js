@@ -1,5 +1,6 @@
-const { z } = require('zod');
-const { prisma, checkDbConnection } = require('../db/client');
+import { z } from 'zod';
+import { prisma, checkDbConnection } from '../db/client.js';
+
 
 // Validation Schemas
 const jobCreateSchema = z.object({
@@ -134,9 +135,10 @@ async function createJob(req, res, next) {
   }
 }
 
-module.exports = {
+export {
   getJobs,
   getJobById,
   createJob,
   jobCreateSchema,
 };
+

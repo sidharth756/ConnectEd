@@ -1,6 +1,6 @@
-const { checkDbConnection } = require('../db/client');
+import { checkDbConnection } from '../db/client.js';
 
-async function getHealth(req, res, next) {
+export async function getHealth(req, res, next) {
   try {
     const dbConnected = await checkDbConnection();
 
@@ -17,7 +17,3 @@ async function getHealth(req, res, next) {
     next(err);
   }
 }
-
-module.exports = {
-  getHealth,
-};

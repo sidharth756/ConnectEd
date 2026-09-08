@@ -1,5 +1,6 @@
-const { z } = require('zod');
-const { prisma, checkDbConnection } = require('../db/client');
+import { z } from 'zod';
+import { prisma, checkDbConnection } from '../db/client.js';
+
 
 // Validation Schema
 const mentorshipRequestSchema = z.object({
@@ -160,9 +161,10 @@ async function getMentorshipRequests(req, res, next) {
   }
 }
 
-module.exports = {
+export {
   getMentors,
   requestMentorship,
   getMentorshipRequests,
   mentorshipRequestSchema,
 };
+

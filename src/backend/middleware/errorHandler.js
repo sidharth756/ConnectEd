@@ -1,9 +1,9 @@
-const { ZodError } = require('zod');
+import { ZodError } from 'zod';
 
 /**
  * Standardized error handling middleware
  */
-function errorHandler(err, req, res, next) {
+export function errorHandler(err, req, res, next) {
   // Handle Zod Validation Errors
   if (err.name === 'ZodError' || err instanceof ZodError) {
     const issues = err.issues || err.errors || [];
@@ -60,7 +60,3 @@ function errorHandler(err, req, res, next) {
     },
   });
 }
-
-module.exports = {
-  errorHandler,
-};

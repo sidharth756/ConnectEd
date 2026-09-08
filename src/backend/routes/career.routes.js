@@ -1,10 +1,10 @@
-const express = require('express');
-const { getRoadmap, saveRoadmap, roadmapSaveSchema } = require('../controllers/career.controller');
-const { validateBody } = require('../middleware/validator');
+import express from 'express';
+import { getRoadmap, saveRoadmap, roadmapSaveSchema } from '../controllers/career.controller.js';
+import { validateBody } from '../middleware/validator.js';
 
 const router = express.Router();
 
 router.get('/roadmap/:studentId', getRoadmap);
 router.post('/roadmap', validateBody(roadmapSaveSchema), saveRoadmap);
 
-module.exports = router;
+export default router;

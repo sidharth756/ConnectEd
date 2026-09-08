@@ -1,12 +1,14 @@
-const app = require('./app');
-const { prisma } = require('./db/client');
+import app from './app.js';
+import { prisma } from './db/client.js';
 
 const PORT = process.env.PORT || 5000;
+const HOST = '0.0.0.0';
 
-const server = app.listen(PORT, () => {
+const server = app.listen(PORT, HOST, () => {
   console.log(`====================================================`);
-  console.log(`🚀 ConnectEd Backend Server running on port ${PORT}`);
+  console.log(`🚀 ConnectEd Backend Server running on http://${HOST}:${PORT}`);
   console.log(`🌐 Health endpoint: http://localhost:${PORT}/api/health`);
+  console.log(`🔑 Auth API:        http://localhost:${PORT}/api/auth`);
   console.log(`🎓 Students API:    http://localhost:${PORT}/api/students`);
   console.log(`💼 Alumni API:      http://localhost:${PORT}/api/alumni`);
   console.log(`🤝 Mentors API:     http://localhost:${PORT}/api/mentors`);
@@ -38,4 +40,4 @@ async function gracefulShutdown(signal) {
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
-module.exports = server;
+export default server;

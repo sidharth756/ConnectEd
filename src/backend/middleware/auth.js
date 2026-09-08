@@ -1,9 +1,9 @@
-const jwt = require('jsonwebtoken');
+import jwt from 'jsonwebtoken';
 
 /**
  * Get JWT Secret safely from environment with fallback for dev/demo testing
  */
-function getJwtSecret() {
+export function getJwtSecret() {
   const secret = process.env.JWT_SECRET;
   if (!secret) {
     if (process.env.NODE_ENV === 'production') {
@@ -18,7 +18,7 @@ function getJwtSecret() {
  * JWT Authentication Middleware
  * Expects header: Authorization: Bearer <token>
  */
-function authenticateToken(req, res, next) {
+export function authenticateToken(req, res, next) {
   const authHeader = req.headers['authorization'];
 
   if (!authHeader) {
@@ -64,8 +64,3 @@ function authenticateToken(req, res, next) {
     });
   }
 }
-
-module.exports = {
-  authenticateToken,
-  getJwtSecret,
-};

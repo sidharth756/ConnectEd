@@ -1,12 +1,12 @@
-const express = require('express');
-const {
+import express from 'express';
+import {
   getStudents,
   getStudentById,
   createStudent,
   studentCreateSchema,
   studentQuerySchema,
-} = require('../controllers/students.controller');
-const { validateBody, validateQuery } = require('../middleware/validator');
+} from '../controllers/students.controller.js';
+import { validateBody, validateQuery } from '../middleware/validator.js';
 
 const router = express.Router();
 
@@ -14,4 +14,4 @@ router.get('/', validateQuery(studentQuerySchema), getStudents);
 router.get('/:id', getStudentById);
 router.post('/', validateBody(studentCreateSchema), createStudent);
 
-module.exports = router;
+export default router;

@@ -1,8 +1,8 @@
-const express = require('express');
-const cors = require('cors');
-const dotenv = require('dotenv');
-const apiRoutes = require('./routes');
-const { errorHandler } = require('./middleware/errorHandler');
+import express from 'express';
+import cors from 'cors';
+import dotenv from 'dotenv';
+import apiRoutes from './routes/index.js';
+import { errorHandler } from './middleware/errorHandler.js';
 
 // Load environment variables
 dotenv.config();
@@ -57,4 +57,4 @@ app.use((req, res) => {
 // Centralized Error Handling Middleware
 app.use(errorHandler);
 
-module.exports = app;
+export default app;

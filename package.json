@@ -1,6 +1,7 @@
 {
   "name": "connected",
   "version": "1.0.0",
+  "type": "module",
   "description": "ConnectEd Hackathon Project",
   "main": "src/backend/server.js",
   "scripts": {

@@ -1,11 +1,11 @@
-const express = require('express');
-const healthRoutes = require('./health.routes');
-const authRoutes = require('./auth.routes');
-const studentRoutes = require('./students.routes');
-const alumniRoutes = require('./alumni.routes');
-const mentorRoutes = require('./mentors.routes');
-const jobRoutes = require('./jobs.routes');
-const careerRoutes = require('./career.routes');
+import express from 'express';
+import healthRoutes from './health.routes.js';
+import authRoutes from './auth.routes.js';
+import studentRoutes from './students.routes.js';
+import alumniRoutes from './alumni.routes.js';
+import mentorRoutes from './mentors.routes.js';
+import jobRoutes from './jobs.routes.js';
+import careerRoutes from './career.routes.js';
 
 const router = express.Router();
 
@@ -17,4 +17,4 @@ router.use('/mentors', mentorRoutes);
 router.use('/jobs', jobRoutes);
 router.use('/career', careerRoutes);
 
-module.exports = router;
+export default router;
