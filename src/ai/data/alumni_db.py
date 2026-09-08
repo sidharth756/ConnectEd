@@ -25,7 +25,8 @@ def save_alumnus_record(alumnus_data: Dict[str, Any]) -> List[Dict[str, Any]]:
     
     existing_index = -1
     for idx, r in enumerate(records):
-        if r.get("id") == alumnus_data.get("id") or r.get("linkedin") == alumnus_data.get("linkedin"):
+        if (alumnus_data.get("id") and r.get("id") == alumnus_data.get("id")) or \
+           (alumnus_data.get("email") and r.get("email") == alumnus_data.get("email")):
             existing_index = idx
             break
 

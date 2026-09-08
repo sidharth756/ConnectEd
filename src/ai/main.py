@@ -1,15 +1,19 @@
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
-from typing import List
+from typing import List, Optional
+
 from src.ai.schemas.alumni_schemas import SearchRequest, StudentProfileSearchRequest, AlumniSearchResult
-from src.ai.schemas.linkedin_schemas import LinkedInIngestRequest, LinkedInIngestResponse
+from src.ai.schemas.roadmap_schemas import RoadmapRequest, RoadmapResponse
+from src.ai.schemas.profile_schemas import ProfileTextParseRequest, ProfileParseResponse
+
 from src.ai.services.alumni_search import search_alumni_by_skills, search_alumni_with_profile
-from src.ai.services.linkedin_ingestion import ingest_linkedin_profile, parse_linkedin_pdf_bytes, sync_monthly_alumni_profiles
+from src.ai.services.career_roadmap import generate_career_roadmap
+from src.ai.services.profile_parser import parse_profile_text, parse_pdf_resume_bytes
 
 app = FastAPI(
-    title="ConnectEd AI Service",
-    description="Python AI Engine powering semantic alumni search, LinkedIn profile ingestion, monthly sync, and student mentorship matching.",
-    version="1.0.0"
+    title="ConnectEd AI Engine",
+    description="Python AI Engine powering semantic alumni search, AI resume/profile parsing, career goal analysis, and 4-phase learning roadmap generation.",
+    version="2.0.0"
 )
 
 # Enable CORS for Node.js backend and React frontend interaction
@@ -21,14 +25,27 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/")
+import os
+from fastapi.responses import HTMLResponse
+
+@app.get("/", response_class=HTMLResponse)
+@app.get("/playground", response_class=HTMLResponse)
+def serve_playground():
+    html_path = os.path.join(os.path.dirname(__file__), "test_playground.html")
+    if os.path.exists(html_path):
+        with open(html_path, "r", encoding="utf-8") as f:
+            return f.read()
+    return "<h1>ConnectEd AI Engine is Online</h1><p>Visit /docs for API Swagger UI.</p>"
+
+@app.get("/api/health")
 def health_check():
     return {
         "status": "online",
         "service": "ConnectEd Python AI Engine",
-        "version": "1.0.0"
+        "version": "2.0.0"
     }
 
+# 1. Semantic Alumni Search Endpoints
 @app.post("/api/ai/alumni-search", response_model=AlumniSearchResult)
 def api_search_alumni(request: SearchRequest):
     if not request.query.strip():
@@ -39,19 +56,27 @@ def api_search_alumni(request: SearchRequest):
 def api_search_alumni_with_profile(request: StudentProfileSearchRequest):
     return search_alumni_with_profile(request.userPrompt, request.studentProfile)
 
-@app.post("/api/ai/ingest-linkedin", response_model=LinkedInIngestResponse)
-def api_ingest_linkedin(request: LinkedInIngestRequest):
-    if not request.username.strip():
-        raise HTTPException(status_code=400, detail="LinkedIn username is required")
-    return ingest_linkedin_profile(request)
+# 2. Career Goal Analysis & Skill-Gap Roadmap Generator Endpoint
+@app.post("/api/ai/generate-roadmap", response_model=RoadmapResponse)
+def api_generate_career_roadmap(request: RoadmapRequest):
+    """
+    Analyzes student skills & background vs target role, creates a 4-phase structured learning roadmap,
+    and attaches top matching alumni mentors.
+    """
+    if not request.targetRole.strip():
+        raise HTTPException(status_code=400, detail="Target career role is required.")
+    return generate_career_roadmap(request)
 
-@app.post("/api/ai/ingest-linkedin-pdf", response_model=LinkedInIngestResponse)
-async def api_ingest_linkedin_pdf(username: str = Form(...), file: UploadFile = File(...)):
-    """Extracts text from uploaded LinkedIn PDF resume and parses with Gemini LLM."""
+# 3. AI Profile & Resume Parser Endpoints
+@app.post("/api/ai/parse-profile-text", response_model=ProfileParseResponse)
+def api_parse_profile_text(request: ProfileTextParseRequest):
+    """Parses raw user bio or profile text using Gemini LLM into structured profile fields."""
+    return parse_profile_text(request)
+
+@app.post("/api/ai/parse-resume-pdf", response_model=ProfileParseResponse)
+async def api_parse_resume_pdf(file: UploadFile = File(...)):
+    """Extracts text from uploaded PDF resume and converts to structured profile using Gemini LLM."""
+    if not file.filename.endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Uploaded file must be a PDF document.")
     contents = await file.read()
-    return parse_linkedin_pdf_bytes(contents, username)
-
-@app.post("/api/ai/sync-linkedin-batch", response_model=List[LinkedInIngestResponse])
-def api_sync_linkedin_batch():
-    """Monthly background trigger endpoint to re-sync all registered alumni profiles."""
-    return sync_monthly_alumni_profiles()
+    return parse_pdf_resume_bytes(contents)

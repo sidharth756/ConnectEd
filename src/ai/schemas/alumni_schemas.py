@@ -8,6 +8,9 @@ class StudentProfile(BaseModel):
     targetRole: Optional[str] = Field(default=None, description="Student's target career role")
     targetCompanies: Optional[List[str]] = Field(default_factory=list, description="Target companies student wants to join")
 
+class SearchRequest(BaseModel):
+    query: str = Field(..., description="Semantic search query string", example="DevOps engineers with AWS experience")
+
 class StudentProfileSearchRequest(BaseModel):
     userPrompt: str = Field(..., description="Raw text prompt typed by student", example="iammm springboot dev looking for alumni at Amazon or Zoho")
     studentProfile: StudentProfile = Field(..., description="Student's profile context (bio, skills, goals)")
