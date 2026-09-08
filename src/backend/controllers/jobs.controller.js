@@ -14,76 +14,17 @@ const jobCreateSchema = z.object({
   postedById: z.string().min(1, 'Poster ID is required'),
 });
 
-const demoJobs = [
-  {
-    id: 'job_1',
-    title: 'Software Engineer - Distributed Systems',
-    company: 'Google',
-    location: 'Bangalore, India (Hybrid)',
-    type: 'FULL_TIME',
-    description: 'Looking for a new grad / early career engineer to join the Cloud Infrastructure team.',
-    requirements: ['Go', 'C++', 'Distributed Systems', 'Computer Science Fundamentals'],
-    referralAvailable: true,
-    applyUrl: 'https://careers.google.com/jobs/results/demo',
-    postedById: 'alm_demo_1',
-    createdAt: new Date(Date.now() - 86400000 * 2).toISOString(),
-  },
-  {
-    id: 'job_2',
-    title: 'AI / ML Engineer Intern',
-    company: 'Microsoft',
-    location: 'Hyderabad, India (Onsite)',
-    type: 'INTERNSHIP',
-    description: 'Summer 2027 internship working on enterprise Copilot integrations and RAG pipelines.',
-    requirements: ['Python', 'PyTorch', 'Vector Databases', 'Prompt Engineering'],
-    referralAvailable: true,
-    applyUrl: 'https://careers.microsoft.com/jobs/demo',
-    postedById: 'alm_demo_2',
-    createdAt: new Date(Date.now() - 86400000 * 5).toISOString(),
-  },
-  {
-    id: 'job_3',
-    title: 'Frontend Engineer (Design Systems)',
-    company: 'Stripe',
-    location: 'Remote',
-    type: 'FULL_TIME',
-    description: 'Join the Core UI platform team crafting reusable, accessible web components.',
-    requirements: ['React', 'TypeScript', 'CSS', 'Accessibility'],
-    referralAvailable: false,
-    applyUrl: 'https://stripe.com/jobs/demo',
-    postedById: 'alm_demo_3',
-    createdAt: new Date(Date.now() - 86400000 * 7).toISOString(),
-  },
-];
-
 async function getJobs(req, res, next) {
   try {
-    const { company, type, referralOnly, search } = req.query;
     const isConnected = await checkDbConnection();
-
     if (!isConnected) {
-      let results = [...demoJobs];
-      if (company) results = results.filter((j) => j.company.toLowerCase().includes(company.toLowerCase()));
-      if (type) results = results.filter((j) => j.type === type);
-      if (referralOnly === 'true') results = results.filter((j) => j.referralAvailable);
-      if (search) {
-        const s = search.toLowerCase();
-        results = results.filter(
-          (j) =>
-            j.title.toLowerCase().includes(s) ||
-            j.company.toLowerCase().includes(s) ||
-            j.requirements.some((r) => r.toLowerCase().includes(s))
-        );
-      }
-
-      return res.status(200).json({
-        success: true,
-        count: results.length,
-        data: results,
-        source: 'standby-cache',
+      return res.status(503).json({
+        success: false,
+        error: { code: 'DATABASE_UNAVAILABLE', message: 'Database service is currently unavailable' },
       });
     }
 
+    const { company, type, referralOnly, search } = req.query;
     const where = {};
     if (company) where.company = { contains: company, mode: 'insensitive' };
     if (type) where.type = type;
@@ -117,20 +58,15 @@ async function getJobs(req, res, next) {
 
 async function getJobById(req, res, next) {
   try {
-    const { id } = req.params;
     const isConnected = await checkDbConnection();
-
     if (!isConnected) {
-      const job = demoJobs.find((j) => j.id === id);
-      if (!job) {
-        return res.status(404).json({
-          success: false,
-          error: { code: 'JOB_NOT_FOUND', message: `Job with ID ${id} not found` },
-        });
-      }
-      return res.status(200).json({ success: true, data: job, source: 'standby-cache' });
+      return res.status(503).json({
+        success: false,
+        error: { code: 'DATABASE_UNAVAILABLE', message: 'Database service is currently unavailable' },
+      });
     }
 
+    const { id } = req.params;
     const job = await prisma.job.findUnique({
       where: { id },
       include: {
@@ -153,30 +89,23 @@ async function getJobById(req, res, next) {
 
 async function createJob(req, res, next) {
   try {
-    const data = req.body;
     const isConnected = await checkDbConnection();
-
     if (!isConnected) {
-      const newJob = {
-        id: `job_${Date.now()}`,
-        title: data.title,
-        company: data.company,
-        location: data.location,
-        type: data.type,
-        description: data.description,
-        requirements: data.requirements || [],
-        referralAvailable: data.referralAvailable !== false,
-        applyUrl: data.applyUrl,
-        postedById: data.postedById,
-        createdAt: new Date().toISOString(),
-      };
-      demoJobs.unshift(newJob);
+      return res.status(503).json({
+        success: false,
+        error: { code: 'DATABASE_UNAVAILABLE', message: 'Database service is currently unavailable' },
+      });
+    }
 
-      return res.status(201).json({
-        success: true,
-        message: 'Job posting / referral created successfully',
-        data: newJob,
-        source: 'standby-cache',
+    const data = req.body;
+
+    const poster = await prisma.user.findUnique({
+      where: { id: data.postedById },
+    });
+    if (!poster) {
+      return res.status(404).json({
+        success: false,
+        error: { code: 'POSTER_NOT_FOUND', message: `User with ID ${data.postedById} not found` },
       });
     }
 
@@ -187,8 +116,8 @@ async function createJob(req, res, next) {
         location: data.location,
         type: data.type,
         description: data.description,
-        requirements: data.requirements,
-        referralAvailable: data.referralAvailable,
+        requirements: data.requirements || [],
+        referralAvailable: data.referralAvailable !== false,
         applyUrl: data.applyUrl,
         postedById: data.postedById,
       },

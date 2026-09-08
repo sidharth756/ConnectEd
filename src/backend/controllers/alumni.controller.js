@@ -25,99 +25,17 @@ const alumniQuerySchema = z.object({
   search: z.string().optional(),
 });
 
-// Demo fallback data
-const demoAlumni = [
-  {
-    id: 'alm_demo_1',
-    name: 'Priya Mehta',
-    email: 'priya.mehta@google.com',
-    role: 'ALUMNI',
-    alumniProfile: {
-      id: 'ap_1',
-      company: 'Google',
-      role: 'Staff Software Engineer',
-      graduationYear: 2019,
-      yearsOfExperience: 6,
-      skills: ['Distributed Systems', 'Go', 'Kubernetes', 'Cloud Architecture'],
-      bio: 'Alumna class of 2019. Happy to review resumes, provide mock interviews, and refer qualified students.',
-      isMentor: true,
-      mentorBio: 'Mentoring students in backend architecture and cloud infrastructure.',
-      maxMentees: 4,
-      linkedinUrl: 'https://linkedin.com/in/priya-mehta-demo',
-    },
-  },
-  {
-    id: 'alm_demo_2',
-    name: 'Rohan Gupta',
-    email: 'rohan.gupta@microsoft.com',
-    role: 'ALUMNI',
-    alumniProfile: {
-      id: 'ap_2',
-      company: 'Microsoft',
-      role: 'Product Manager',
-      graduationYear: 2020,
-      yearsOfExperience: 5,
-      skills: ['Product Strategy', 'AI Products', 'Data Analytics', 'Agile'],
-      bio: 'Passionate about guiding students transitioning from engineering into product management.',
-      isMentor: true,
-      mentorBio: 'Focusing on APM prep and tech transition strategies.',
-      maxMentees: 2,
-      linkedinUrl: 'https://linkedin.com/in/rohan-gupta-demo',
-    },
-  },
-  {
-    id: 'alm_demo_3',
-    name: 'Ananya Verma',
-    email: 'ananya.v@stripe.com',
-    role: 'ALUMNI',
-    alumniProfile: {
-      id: 'ap_3',
-      company: 'Stripe',
-      role: 'Senior Frontend Engineer',
-      graduationYear: 2021,
-      yearsOfExperience: 4,
-      skills: ['React', 'TypeScript', 'Design Systems', 'Web Performance'],
-      bio: 'UI engineer building high-reliability payment interfaces.',
-      isMentor: false,
-      mentorBio: null,
-      maxMentees: 0,
-      linkedinUrl: 'https://linkedin.com/in/ananya-verma-demo',
-    },
-  },
-];
-
 async function getAlumni(req, res, next) {
   try {
-    const { company, role, skill, isMentor, search } = req.query;
     const isConnected = await checkDbConnection();
-
     if (!isConnected) {
-      let results = [...demoAlumni];
-      if (company) results = results.filter((a) => a.alumniProfile.company.toLowerCase().includes(company.toLowerCase()));
-      if (role) results = results.filter((a) => a.alumniProfile.role.toLowerCase().includes(role.toLowerCase()));
-      if (skill) results = results.filter((a) => a.alumniProfile.skills.some((sk) => sk.toLowerCase().includes(skill.toLowerCase())));
-      if (isMentor !== undefined) {
-        const isM = isMentor === 'true';
-        results = results.filter((a) => a.alumniProfile.isMentor === isM);
-      }
-      if (search) {
-        const s = search.toLowerCase();
-        results = results.filter(
-          (a) =>
-            a.name.toLowerCase().includes(s) ||
-            a.alumniProfile.company.toLowerCase().includes(s) ||
-            a.alumniProfile.role.toLowerCase().includes(s)
-        );
-      }
-
-      return res.status(200).json({
-        success: true,
-        count: results.length,
-        data: results,
-        source: 'standby-cache',
+      return res.status(503).json({
+        success: false,
+        error: { code: 'DATABASE_UNAVAILABLE', message: 'Database service is currently unavailable' },
       });
     }
 
+    const { company, role, skill, isMentor, search } = req.query;
     const where = {};
     if (company || role || skill || isMentor !== undefined) {
       where.alumniProfile = {};
@@ -152,22 +70,20 @@ async function getAlumni(req, res, next) {
 
 async function getAlumniById(req, res, next) {
   try {
-    const { id } = req.params;
     const isConnected = await checkDbConnection();
-
     if (!isConnected) {
-      const alum = demoAlumni.find((a) => a.id === id || (a.alumniProfile && a.alumniProfile.id === id));
-      if (!alum) {
-        return res.status(404).json({
-          success: false,
-          error: { code: 'ALUMNI_NOT_FOUND', message: `Alumni with ID ${id} not found` },
-        });
-      }
-      return res.status(200).json({ success: true, data: alum, source: 'standby-cache' });
+      return res.status(503).json({
+        success: false,
+        error: { code: 'DATABASE_UNAVAILABLE', message: 'Database service is currently unavailable' },
+      });
     }
 
-    const alum = await prisma.user.findUnique({
-      where: { id },
+    const { id } = req.params;
+    const alum = await prisma.user.findFirst({
+      where: {
+        OR: [{ id }, { alumniProfile: { id } }],
+        role: 'ALUMNI',
+      },
       include: {
         alumniProfile: {
           include: { mentorships: true },
@@ -176,7 +92,7 @@ async function getAlumniById(req, res, next) {
       },
     });
 
-    if (!alum || alum.role !== 'ALUMNI') {
+    if (!alum) {
       return res.status(404).json({
         success: false,
         error: { code: 'ALUMNI_NOT_FOUND', message: `Alumni with ID ${id} not found` },
@@ -191,35 +107,23 @@ async function getAlumniById(req, res, next) {
 
 async function createAlumni(req, res, next) {
   try {
-    const data = req.body;
     const isConnected = await checkDbConnection();
-
     if (!isConnected) {
-      const newAlum = {
-        id: `alm_${Date.now()}`,
-        name: data.name,
-        email: data.email,
-        role: 'ALUMNI',
-        alumniProfile: {
-          id: `ap_${Date.now()}`,
-          company: data.company,
-          role: data.role,
-          graduationYear: data.graduationYear,
-          yearsOfExperience: data.yearsOfExperience || 0,
-          bio: data.bio,
-          skills: data.skills || [],
-          isMentor: data.isMentor || false,
-          mentorBio: data.mentorBio,
-          maxMentees: data.maxMentees || 3,
-          linkedinUrl: data.linkedinUrl,
-        },
-      };
-      demoAlumni.push(newAlum);
-      return res.status(201).json({
-        success: true,
-        message: 'Alumni profile created successfully',
-        data: newAlum,
-        source: 'standby-cache',
+      return res.status(503).json({
+        success: false,
+        error: { code: 'DATABASE_UNAVAILABLE', message: 'Database service is currently unavailable' },
+      });
+    }
+
+    const data = req.body;
+
+    const existingUser = await prisma.user.findUnique({
+      where: { email: data.email },
+    });
+    if (existingUser) {
+      return res.status(409).json({
+        success: false,
+        error: { code: 'USER_ALREADY_EXISTS', message: `User with email ${data.email} already exists` },
       });
     }
 
@@ -233,12 +137,12 @@ async function createAlumni(req, res, next) {
             company: data.company,
             role: data.role,
             graduationYear: data.graduationYear,
-            yearsOfExperience: data.yearsOfExperience,
+            yearsOfExperience: data.yearsOfExperience || 0,
             bio: data.bio,
-            skills: data.skills,
-            isMentor: data.isMentor,
+            skills: data.skills || [],
+            isMentor: data.isMentor || false,
             mentorBio: data.mentorBio,
-            maxMentees: data.maxMentees,
+            maxMentees: data.maxMentees || 3,
             linkedinUrl: data.linkedinUrl,
           },
         },
@@ -263,5 +167,4 @@ module.exports = {
   createAlumni,
   alumniCreateSchema,
   alumniQuerySchema,
-  demoAlumni,
 };

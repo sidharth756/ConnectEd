@@ -9,53 +9,22 @@ const roadmapSaveSchema = z.object({
   skillsToAcquire: z.array(z.string()).default([]),
 });
 
-const demoRoadmaps = {
-  std_demo_1: {
-    id: 'rdmp_1',
-    studentId: 'std_demo_1',
-    targetRole: 'Full Stack Engineer',
-    skillsToAcquire: ['Docker', 'AWS ECS', 'System Design', 'Redis Caching'],
-    roadmapData: {
-      phases: [
-        {
-          title: 'Phase 1: Backend Architecture Fundamentals',
-          duration: '4 Weeks',
-          milestones: ['Design scalable RESTful APIs', 'Implement Redis caching', 'Prisma ORM advanced queries'],
-        },
-        {
-          title: 'Phase 2: Cloud & Container Deployment',
-          duration: '4 Weeks',
-          milestones: ['Containerize with Docker', 'Deploy to AWS ECS / Fargate', 'Set up GitHub Actions CI/CD'],
-        },
-        {
-          title: 'Phase 3: Alumni Mentorship & System Design',
-          duration: '2 Weeks',
-          milestones: ['Conduct mock interviews with Google alumni', 'Review production project architecture'],
-        },
-      ],
-    },
-    generatedAt: new Date().toISOString(),
-  },
-};
-
 async function getRoadmap(req, res, next) {
   try {
-    const { studentId } = req.params;
     const isConnected = await checkDbConnection();
-
     if (!isConnected) {
-      const roadmap = demoRoadmaps[studentId];
-      if (!roadmap) {
-        return res.status(404).json({
-          success: false,
-          error: { code: 'ROADMAP_NOT_FOUND', message: `No roadmap found for student ${studentId}` },
-        });
-      }
-      return res.status(200).json({ success: true, data: roadmap, source: 'standby-cache' });
+      return res.status(503).json({
+        success: false,
+        error: { code: 'DATABASE_UNAVAILABLE', message: 'Database service is currently unavailable' },
+      });
     }
 
+    const { studentId } = req.params;
+
     const roadmap = await prisma.careerRoadmap.findFirst({
-      where: { studentId },
+      where: {
+        OR: [{ studentId }, { student: { userId: studentId } }],
+      },
       orderBy: { generatedAt: 'desc' },
     });
 
@@ -74,34 +43,38 @@ async function getRoadmap(req, res, next) {
 
 async function saveRoadmap(req, res, next) {
   try {
-    const { studentId, targetRole, roadmapData, skillsToAcquire } = req.body;
     const isConnected = await checkDbConnection();
-
     if (!isConnected) {
-      const newRoadmap = {
-        id: `rdmp_${Date.now()}`,
-        studentId,
-        targetRole,
-        roadmapData,
-        skillsToAcquire: skillsToAcquire || [],
-        generatedAt: new Date().toISOString(),
-      };
-      demoRoadmaps[studentId] = newRoadmap;
+      return res.status(503).json({
+        success: false,
+        error: { code: 'DATABASE_UNAVAILABLE', message: 'Database service is currently unavailable' },
+      });
+    }
 
-      return res.status(201).json({
-        success: true,
-        message: 'Career roadmap saved successfully',
-        data: newRoadmap,
-        source: 'standby-cache',
+    const { studentId, targetRole, roadmapData, skillsToAcquire } = req.body;
+
+    let studentProfile = await prisma.studentProfile.findUnique({
+      where: { id: studentId },
+    });
+    if (!studentProfile) {
+      studentProfile = await prisma.studentProfile.findUnique({
+        where: { userId: studentId },
+      });
+    }
+
+    if (!studentProfile) {
+      return res.status(404).json({
+        success: false,
+        error: { code: 'STUDENT_NOT_FOUND', message: `Student profile with ID ${studentId} not found` },
       });
     }
 
     const roadmap = await prisma.careerRoadmap.create({
       data: {
-        studentId,
+        studentId: studentProfile.id,
         targetRole,
         roadmapData,
-        skillsToAcquire,
+        skillsToAcquire: skillsToAcquire || [],
       },
     });
 
