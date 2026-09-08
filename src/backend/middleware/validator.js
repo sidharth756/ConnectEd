@@ -15,7 +15,10 @@ export function validateBody(schema) {
 export function validateQuery(schema) {
   return (req, res, next) => {
     try {
-      req.query = schema.parse(req.query);
+      const parsed = schema.parse(req.query || {});
+      if (req.query) {
+        Object.assign(req.query, parsed);
+      }
       next();
     } catch (err) {
       next(err);
@@ -26,7 +29,10 @@ export function validateQuery(schema) {
 export function validateParams(schema) {
   return (req, res, next) => {
     try {
-      req.params = schema.parse(req.params);
+      const parsed = schema.parse(req.params || {});
+      if (req.params) {
+        Object.assign(req.params, parsed);
+      }
       next();
     } catch (err) {
       next(err);
