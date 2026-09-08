@@ -1,0 +1,34 @@
+{
+  "name": "connected",
+  "version": "1.0.0",
+  "description": "```text\r ConnectEd/\r ├── src/\r │   ├── ai/               # AI Team workspace\r │   │   ├── services/     # AI service modules (roadmaps, skill gap analysis)\r │   │   ├── matching/     # Alumni & mentor semantic matching logic\r │   │   ├── rag/          # Vector search, embeddings, RAG assistant\r │   │   ├── schemas/      # Zod schemas for structured LLM output\r │   │   └── prompts/      # System & user prompt templates\r │   ├── backend/          # Backend Team workspace\r │   │   ├── controllers/  # API controllers\r │   │   ├── routes/       # Express / Node API routes\r │   │   ├── services/     # Business logic\r │   │   ├── db/           # PostgreSQL + pgvector schema & connection\r │   │   └── middleware/   # Authentication, validation, error handling\r │   ├── frontend/         # Frontend Team workspace (React)\r │   │   ├── components/   # UI components\r │   │   ├── pages/        # Page views\r │   │   ├── hooks/        # Custom React hooks\r │   │   ├── services/     # API client services\r │   │   └── styles/       # CSS / styling files\r │   └── shared/           # Shared types, constants, and utilities across teams\r │       ├── types/        # Shared TypeScript definitions\r │       └── utils/        # Shared helper functions\r ├── .env.example          # Environment variables template\r └── README.md\r ```\r # ConnectEd — Common Development Rules",
+  "main": "index.js",
+  "scripts": {
+    "start": "node src/backend/server.js",
+    "dev": "nodemon src/backend/server.js",
+    "prisma:generate": "prisma generate",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sidharth756/ConnectEd.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/sidharth756/ConnectEd/issues"
+  },
+  "homepage": "https://github.com/sidharth756/ConnectEd#readme",
+  "dependencies": {
+    "@prisma/client": "^6.19.3",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "prisma": "^6.19.3",
+    "zod": "^4.5.4"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}
