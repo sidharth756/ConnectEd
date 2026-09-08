@@ -2,13 +2,34 @@
   "name": "connected",
   "version": "1.0.0",
   "description": "ConnectEd Hackathon Project",
-  "main": "src/index.js",
+  "main": "src/backend/server.js",
   "type": "module",
   "scripts": {
+    "start": "node src/backend/server.js",
+    "dev": "nodemon src/backend/server.js",
+    "prisma:generate": "prisma generate",
     "test:search": "node src/ai/testSearch.js"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sidharth756/ConnectEd.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/sidharth756/ConnectEd/issues"
+  },
+  "homepage": "https://github.com/sidharth756/ConnectEd#readme",
   "dependencies": {
+    "@prisma/client": "^6.19.3",
+    "cors": "^2.8.6",
     "dotenv": "^16.4.5",
+    "express": "^5.2.1",
+    "prisma": "^6.19.3",
     "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
   }
 }
