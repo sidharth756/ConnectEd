@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "description": "ConnectEd Hackathon Project",
   "main": "src/backend/server.js",
-  "type": "module",
   "scripts": {
     "dev": "vite",
     "dev:backend": "nodemon src/backend/server.js",
@@ -11,7 +10,12 @@
     "build": "vite build",
     "preview": "vite preview",
     "prisma:generate": "prisma generate",
-    "test:search": "node src/ai/testSearch.js"
+    "db:seed": "node prisma/seed.js",
+    "test:search": "node src/ai/testSearch.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "prisma": {
+    "seed": "node prisma/seed.js"
   },
   "repository": {
     "type": "git",
@@ -26,9 +30,11 @@
   "homepage": "https://github.com/sidharth756/ConnectEd#readme",
   "dependencies": {
     "@prisma/client": "^6.19.3",
+    "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "dotenv": "^16.4.5",
     "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
     "lucide-react": "^0.469.0",
     "prisma": "^6.19.3",
     "react": "^18.3.1",

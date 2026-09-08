@@ -22,58 +22,17 @@ const studentQuerySchema = z.object({
   search: z.string().optional(),
 });
 
-// Demo fallback data when DB is not yet populated
-const demoStudents = [
-  {
-    id: 'std_demo_1',
-    name: 'Aarav Patel',
-    email: 'aarav.patel@university.edu',
-    role: 'STUDENT',
-    studentProfile: {
-      major: 'Computer Science',
-      graduationYear: 2026,
-      targetRole: 'Full Stack Engineer',
-      skills: ['JavaScript', 'React', 'Node.js', 'PostgreSQL'],
-      bio: 'Junior CS student passionate about distributed systems and AI web applications.',
-      gpa: 3.85,
-    },
-  },
-  {
-    id: 'std_demo_2',
-    name: 'Neha Sharma',
-    email: 'neha.sharma@university.edu',
-    role: 'STUDENT',
-    studentProfile: {
-      major: 'Data Science',
-      graduationYear: 2025,
-      targetRole: 'Machine Learning Engineer',
-      skills: ['Python', 'PyTorch', 'SQL', 'FastAPI', 'Pandas'],
-      bio: 'Senior student focusing on NLP and semantic search architectures.',
-      gpa: 3.92,
-    },
-  },
-];
-
 async function getStudents(req, res, next) {
   try {
-    const { major, targetRole, skill, search } = req.query;
     const isConnected = await checkDbConnection();
-
     if (!isConnected) {
-      let results = [...demoStudents];
-      if (major) results = results.filter((s) => s.studentProfile.major.toLowerCase().includes(major.toLowerCase()));
-      if (targetRole) results = results.filter((s) => s.studentProfile.targetRole.toLowerCase().includes(targetRole.toLowerCase()));
-      if (skill) results = results.filter((s) => s.studentProfile.skills.some((sk) => sk.toLowerCase().includes(skill.toLowerCase())));
-      if (search) results = results.filter((s) => s.name.toLowerCase().includes(search.toLowerCase()));
-
-      return res.status(200).json({
-        success: true,
-        count: results.length,
-        data: results,
-        source: 'standby-cache',
+      return res.status(503).json({
+        success: false,
+        error: { code: 'DATABASE_UNAVAILABLE', message: 'Database service is currently unavailable' },
       });
     }
 
+    const { major, targetRole, skill, search } = req.query;
     const where = {};
     if (major || targetRole || skill) {
       where.studentProfile = {};
@@ -106,22 +65,20 @@ async function getStudents(req, res, next) {
 
 async function getStudentById(req, res, next) {
   try {
-    const { id } = req.params;
     const isConnected = await checkDbConnection();
-
     if (!isConnected) {
-      const student = demoStudents.find((s) => s.id === id);
-      if (!student) {
-        return res.status(404).json({
-          success: false,
-          error: { code: 'STUDENT_NOT_FOUND', message: `Student with ID ${id} not found` },
-        });
-      }
-      return res.status(200).json({ success: true, data: student, source: 'standby-cache' });
+      return res.status(503).json({
+        success: false,
+        error: { code: 'DATABASE_UNAVAILABLE', message: 'Database service is currently unavailable' },
+      });
     }
 
-    const student = await prisma.user.findUnique({
-      where: { id },
+    const { id } = req.params;
+    const student = await prisma.user.findFirst({
+      where: {
+        OR: [{ id }, { studentProfile: { id } }],
+        role: 'STUDENT',
+      },
       include: {
         studentProfile: {
           include: { careerRoadmaps: true, mentorships: true },
@@ -129,7 +86,7 @@ async function getStudentById(req, res, next) {
       },
     });
 
-    if (!student || student.role !== 'STUDENT') {
+    if (!student) {
       return res.status(404).json({
         success: false,
         error: { code: 'STUDENT_NOT_FOUND', message: `Student with ID ${id} not found` },
@@ -144,32 +101,23 @@ async function getStudentById(req, res, next) {
 
 async function createStudent(req, res, next) {
   try {
-    const data = req.body;
     const isConnected = await checkDbConnection();
-
     if (!isConnected) {
-      const newStudent = {
-        id: `std_${Date.now()}`,
-        name: data.name,
-        email: data.email,
-        role: 'STUDENT',
-        studentProfile: {
-          major: data.major,
-          graduationYear: data.graduationYear,
-          targetRole: data.targetRole,
-          skills: data.skills || [],
-          bio: data.bio,
-          gpa: data.gpa,
-          githubUrl: data.githubUrl,
-          linkedinUrl: data.linkedinUrl,
-        },
-      };
-      demoStudents.push(newStudent);
-      return res.status(201).json({
-        success: true,
-        message: 'Student profile created successfully',
-        data: newStudent,
-        source: 'standby-cache',
+      return res.status(503).json({
+        success: false,
+        error: { code: 'DATABASE_UNAVAILABLE', message: 'Database service is currently unavailable' },
+      });
+    }
+
+    const data = req.body;
+
+    const existingUser = await prisma.user.findUnique({
+      where: { email: data.email },
+    });
+    if (existingUser) {
+      return res.status(409).json({
+        success: false,
+        error: { code: 'USER_ALREADY_EXISTS', message: `User with email ${data.email} already exists` },
       });
     }
 
@@ -183,7 +131,7 @@ async function createStudent(req, res, next) {
             major: data.major,
             graduationYear: data.graduationYear,
             targetRole: data.targetRole,
-            skills: data.skills,
+            skills: data.skills || [],
             bio: data.bio,
             gpa: data.gpa,
             githubUrl: data.githubUrl,

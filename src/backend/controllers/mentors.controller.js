@@ -1,6 +1,5 @@
 const { z } = require('zod');
 const { prisma, checkDbConnection } = require('../db/client');
-const { demoAlumni } = require('./alumni.controller');
 
 // Validation Schema
 const mentorshipRequestSchema = z.object({
@@ -10,36 +9,17 @@ const mentorshipRequestSchema = z.object({
   goals: z.array(z.string()).default([]),
 });
 
-const demoRequests = [
-  {
-    id: 'req_1',
-    mentorId: 'ap_1',
-    menteeId: 'std_demo_1',
-    status: 'ACCEPTED',
-    message: 'Looking for guidance on preparing for senior backend and infrastructure roles.',
-    goals: ['Resume Review', 'System Design Mock', 'Career Path Strategy'],
-    createdAt: new Date(Date.now() - 86400000 * 3).toISOString(),
-  },
-];
-
 async function getMentors(req, res, next) {
   try {
-    const { skill, company } = req.query;
     const isConnected = await checkDbConnection();
-
     if (!isConnected) {
-      let mentors = demoAlumni.filter((a) => a.alumniProfile && a.alumniProfile.isMentor);
-      if (skill) mentors = mentors.filter((m) => m.alumniProfile.skills.some((s) => s.toLowerCase().includes(skill.toLowerCase())));
-      if (company) mentors = mentors.filter((m) => m.alumniProfile.company.toLowerCase().includes(company.toLowerCase()));
-
-      return res.status(200).json({
-        success: true,
-        count: mentors.length,
-        data: mentors,
-        source: 'standby-cache',
+      return res.status(503).json({
+        success: false,
+        error: { code: 'DATABASE_UNAVAILABLE', message: 'Database service is currently unavailable' },
       });
     }
 
+    const { skill, company } = req.query;
     const where = {
       role: 'ALUMNI',
       alumniProfile: { isMentor: true },
@@ -73,35 +53,56 @@ async function getMentors(req, res, next) {
 
 async function requestMentorship(req, res, next) {
   try {
-    const { mentorId, menteeId, message, goals } = req.body;
     const isConnected = await checkDbConnection();
-
     if (!isConnected) {
-      const newRequest = {
-        id: `req_${Date.now()}`,
-        mentorId,
-        menteeId,
-        status: 'PENDING',
-        message,
-        goals: goals || [],
-        createdAt: new Date().toISOString(),
-      };
-      demoRequests.push(newRequest);
+      return res.status(503).json({
+        success: false,
+        error: { code: 'DATABASE_UNAVAILABLE', message: 'Database service is currently unavailable' },
+      });
+    }
 
-      return res.status(201).json({
-        success: true,
-        message: 'Mentorship request submitted successfully',
-        data: newRequest,
-        source: 'standby-cache',
+    const { mentorId, menteeId, message, goals } = req.body;
+
+    // Verify mentor profile exists (checking AlumniProfile.id or User.id)
+    let mentorProfile = await prisma.alumniProfile.findUnique({
+      where: { id: mentorId },
+    });
+    if (!mentorProfile) {
+      mentorProfile = await prisma.alumniProfile.findUnique({
+        where: { userId: mentorId },
+      });
+    }
+
+    if (!mentorProfile) {
+      return res.status(404).json({
+        success: false,
+        error: { code: 'MENTOR_NOT_FOUND', message: `Mentor profile with ID ${mentorId} not found` },
+      });
+    }
+
+    // Verify mentee profile exists (checking StudentProfile.id or User.id)
+    let menteeProfile = await prisma.studentProfile.findUnique({
+      where: { id: menteeId },
+    });
+    if (!menteeProfile) {
+      menteeProfile = await prisma.studentProfile.findUnique({
+        where: { userId: menteeId },
+      });
+    }
+
+    if (!menteeProfile) {
+      return res.status(404).json({
+        success: false,
+        error: { code: 'MENTEE_NOT_FOUND', message: `Mentee profile with ID ${menteeId} not found` },
       });
     }
 
     const request = await prisma.mentorship.create({
       data: {
-        mentorId,
-        menteeId,
+        mentorId: mentorProfile.id,
+        menteeId: menteeProfile.id,
         message,
-        goals,
+        goals: goals || [],
         status: 'PENDING',
       },
     });
@@ -119,28 +120,23 @@ async function requestMentorship(req, res, next) {
 
 async function getMentorshipRequests(req, res, next) {
   try {
-    const { userId, status } = req.query;
     const isConnected = await checkDbConnection();
-
     if (!isConnected) {
-      let requests = [...demoRequests];
-      if (status) requests = requests.filter((r) => r.status === status);
-      if (userId) requests = requests.filter((r) => r.mentorId === userId || r.menteeId === userId);
-
-      return res.status(200).json({
-        success: true,
-        count: requests.length,
-        data: requests,
-        source: 'standby-cache',
+      return res.status(503).json({
+        success: false,
+        error: { code: 'DATABASE_UNAVAILABLE', message: 'Database service is currently unavailable' },
       });
     }
 
+    const { userId, status } = req.query;
     const where = {};
     if (status) where.status = status;
     if (userId) {
       where.OR = [
         { mentor: { userId } },
         { mentee: { userId } },
+        { mentorId: userId },
+        { menteeId: userId },
       ];
     }
 
