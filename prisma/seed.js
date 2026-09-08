@@ -1,5 +1,8 @@
 const { PrismaClient } = require('@prisma/client');
+const bcrypt = require('bcryptjs');
 const prisma = new PrismaClient();
+
+const DEFAULT_SEED_PASSWORD_HASH = bcrypt.hashSync('Password123!', 10);
 
 async function main() {
   console.log('🌱 Starting ConnectEd database seed...');
@@ -10,11 +13,13 @@ async function main() {
     update: {
       name: 'Aarav Sharma',
       role: 'STUDENT',
+      password: DEFAULT_SEED_PASSWORD_HASH,
     },
     create: {
       email: 'student1@connected.demo',
       name: 'Aarav Sharma',
       role: 'STUDENT',
+      password: DEFAULT_SEED_PASSWORD_HASH,
       avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb',
     },
   });
@@ -49,11 +54,13 @@ async function main() {
     update: {
       name: 'Ananya Verma',
       role: 'STUDENT',
+      password: DEFAULT_SEED_PASSWORD_HASH,
     },
     create: {
       email: 'student2@connected.demo',
       name: 'Ananya Verma',
       role: 'STUDENT',
+      password: DEFAULT_SEED_PASSWORD_HASH,
       avatarUrl: 'https://images.unsplash.com/photo-1517841905240-472988babdf9',
     },
   });
@@ -89,11 +96,13 @@ async function main() {
     update: {
       name: 'Vikram Patel',
       role: 'ALUMNI',
+      password: DEFAULT_SEED_PASSWORD_HASH,
     },
     create: {
       email: 'alumni1@connected.demo',
       name: 'Vikram Patel',
       role: 'ALUMNI',
+      password: DEFAULT_SEED_PASSWORD_HASH,
       avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d',
     },
   });
@@ -132,11 +141,13 @@ async function main() {
     update: {
       name: 'Priya Nair',
       role: 'ALUMNI',
+      password: DEFAULT_SEED_PASSWORD_HASH,
     },
     create: {
       email: 'alumni2@connected.demo',
       name: 'Priya Nair',
       role: 'ALUMNI',
+      password: DEFAULT_SEED_PASSWORD_HASH,
       avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330',
     },
   });
@@ -175,11 +186,13 @@ async function main() {
     update: {
       name: 'Rohan Mehta',
       role: 'ALUMNI',
+      password: DEFAULT_SEED_PASSWORD_HASH,
     },
     create: {
       email: 'alumni3@connected.demo',
       name: 'Rohan Mehta',
       role: 'ALUMNI',
+      password: DEFAULT_SEED_PASSWORD_HASH,
       avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e',
     },
   });
