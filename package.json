@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "description": "ConnectEd Hackathon Project",
   "main": "src/backend/server.js",
-  "type": "module",
   "scripts": {
     "dev": "vite",
     "dev:backend": "nodemon src/backend/server.js",
