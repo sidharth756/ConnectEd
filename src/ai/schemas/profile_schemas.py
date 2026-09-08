@@ -18,7 +18,15 @@ class ExtractedProfile(BaseModel):
     education: List[str] = Field(default_factory=list, description="Degrees, universities, or certifications")
     email: Optional[str] = Field(default="", description="Contact email if found")
 
+from src.ai.schemas.alumni_schemas import AlumniMatch
+
 class ProfileParseResponse(BaseModel):
     success: bool
     message: str
     profile: ExtractedProfile
+
+class ResumeMatchResponse(BaseModel):
+    success: bool
+    message: str
+    extractedProfile: ExtractedProfile
+    matchedAlumni: List[AlumniMatch]

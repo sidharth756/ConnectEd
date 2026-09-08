@@ -4,11 +4,16 @@ from typing import List, Optional
 
 from src.ai.schemas.alumni_schemas import SearchRequest, StudentProfileSearchRequest, AlumniSearchResult
 from src.ai.schemas.roadmap_schemas import RoadmapRequest, RoadmapResponse
-from src.ai.schemas.profile_schemas import ProfileTextParseRequest, ProfileParseResponse
+from src.ai.schemas.profile_schemas import ProfileTextParseRequest, ProfileParseResponse, ResumeMatchResponse
 
 from src.ai.services.alumni_search import search_alumni_by_skills, search_alumni_with_profile
 from src.ai.services.career_roadmap import generate_career_roadmap
-from src.ai.services.profile_parser import parse_profile_text, parse_pdf_resume_bytes
+from src.ai.services.profile_parser import (
+    parse_profile_text, 
+    parse_pdf_resume_bytes,
+    match_alumni_from_resume_text,
+    match_alumni_from_resume_pdf
+)
 
 app = FastAPI(
     title="ConnectEd AI Engine",
@@ -80,3 +85,17 @@ async def api_parse_resume_pdf(file: UploadFile = File(...)):
         raise HTTPException(status_code=400, detail="Uploaded file must be a PDF document.")
     contents = await file.read()
     return parse_pdf_resume_bytes(contents)
+
+# 4. Resume-Based Alumni & Mentorship Matching Endpoints
+@app.post("/api/ai/match-resume-text", response_model=ResumeMatchResponse)
+def api_match_resume_text(request: ProfileTextParseRequest):
+    """Parses raw text resume/bio, extracts profile, and returns top matched alumni mentors."""
+    return match_alumni_from_resume_text(request)
+
+@app.post("/api/ai/match-resume-pdf", response_model=ResumeMatchResponse)
+async def api_match_resume_pdf(file: UploadFile = File(...)):
+    """Extracts text from uploaded PDF resume, parses profile, and returns top matched alumni mentors."""
+    if not file.filename.endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Uploaded file must be a PDF document.")
+    contents = await file.read()
+    return match_alumni_from_resume_pdf(contents)

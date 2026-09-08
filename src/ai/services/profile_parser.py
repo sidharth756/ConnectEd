@@ -5,7 +5,9 @@ import requests
 from typing import Optional
 from pypdf import PdfReader
 from src.ai.config import config
-from src.ai.schemas.profile_schemas import ProfileTextParseRequest, ProfileParseResponse, ExtractedProfile
+from src.ai.schemas.profile_schemas import ProfileTextParseRequest, ProfileParseResponse, ExtractedProfile, ResumeMatchResponse
+from src.ai.schemas.alumni_schemas import StudentProfile
+from src.ai.services.alumni_search import search_alumni_with_profile
 from src.ai.data.alumni_db import save_alumnus_record
 
 def parse_profile_text(request: ProfileTextParseRequest) -> ProfileParseResponse:
@@ -58,6 +60,63 @@ def parse_pdf_resume_bytes(pdf_bytes: bytes) -> ProfileParseResponse:
             success=False,
             message=f"Failed to read PDF resume: {str(e)}",
             profile=_create_empty_profile("Resume User")
+        )
+
+def match_alumni_from_resume_text(request: ProfileTextParseRequest) -> ResumeMatchResponse:
+    """Parses raw text resume/bio and matches top alumni/mentors."""
+    parse_res = parse_profile_text(request)
+    if not parse_res.success:
+        return ResumeMatchResponse(
+            success=False,
+            message=parse_res.message,
+            extractedProfile=parse_res.profile,
+            matchedAlumni=[]
+        )
+
+    prof = parse_res.profile
+    student_profile = StudentProfile(
+        name=prof.name,
+        bio=prof.bio or prof.headline,
+        skills=prof.skills,
+        targetRole=prof.headline or prof.role,
+        targetCompanies=[prof.company] if prof.company else []
+    )
+
+    search_prompt = f"Find top matching alumni mentors for {prof.name} specializing in {', '.join(prof.skills[:4])}"
+    search_res = search_alumni_with_profile(search_prompt, student_profile)
+
+    return ResumeMatchResponse(
+        success=True,
+        message=f"Successfully extracted resume for {prof.name} and matched top alumni mentors.",
+        extractedProfile=prof,
+        matchedAlumni=search_res.matches
+    )
+
+def match_alumni_from_resume_pdf(pdf_bytes: bytes) -> ResumeMatchResponse:
+    """Extracts text from PDF resume, parses profile, and matches top alumni/mentors."""
+    try:
+        reader = PdfReader(io.BytesIO(pdf_bytes))
+        extracted_text = ""
+        for page in reader.pages:
+            t = page.extract_text()
+            if t:
+                extracted_text += t + "\n"
+
+        if not extracted_text.strip():
+            return ResumeMatchResponse(
+                success=False,
+                message="Could not extract text from PDF resume.",
+                extractedProfile=_create_empty_profile("Resume User"),
+                matchedAlumni=[]
+            )
+
+        return match_alumni_from_resume_text(ProfileTextParseRequest(rawText=extracted_text))
+    except Exception as e:
+        return ResumeMatchResponse(
+            success=False,
+            message=f"Error reading PDF resume: {str(e)}",
+            extractedProfile=_create_empty_profile("Resume User"),
+            matchedAlumni=[]
         )
 
 def _call_gemini_profile_llm(raw_text: str) -> Optional[ExtractedProfile]:

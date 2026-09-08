@@ -448,17 +448,22 @@
         </div>
     </div>
 
-    <!-- TAB 3: AI Resume & Bio Parser -->
+    <!-- TAB 3: AI Resume & Bio Parser & Mentor Matcher -->
     <div id="parserTab" class="tab-pane">
         <div class="panel">
-            <div class="panel-title">📄 AI Resume & Bio Parser</div>
+            <div class="panel-title">📄 AI Resume Parser & Mentor Matcher</div>
             <div class="form-group">
-                <label>Option A: Paste Raw Profile / Bio Text</label>
+                <label>Option A: Paste Raw Resume / Bio Text</label>
                 <textarea id="parseBioText" style="min-height: 140px;">Sidharth is a Senior Full-Stack Cloud Engineer based in Bengaluru with 4 years experience in Python, FastAPI, React, Docker, Kubernetes, and AWS. Graduated from IIT Madras with B.Tech CS. Email: sidharth@connected.edu</textarea>
             </div>
-            <button class="btn-submit" onclick="parseRawTextBio()">
-                <span id="parseTextBtn">Parse Profile Text with Gemini LLM</span>
-            </button>
+            <div style="display: flex; gap: 0.5rem;">
+                <button class="btn-submit" onclick="parseRawTextBio()">
+                    <span id="parseTextBtn">Parse Profile</span>
+                </button>
+                <button class="btn-submit" style="background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%);" onclick="matchRawTextResume()">
+                    <span id="matchTextBtn">🎯 Match Alumni from Resume</span>
+                </button>
+            </div>
 
             <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 1.5rem 0;">
 
@@ -466,14 +471,19 @@
                 <label>Option B: Upload Resume PDF File</label>
                 <input type="file" id="resumePdfInput" accept=".pdf">
             </div>
-            <button class="btn-submit" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);" onclick="uploadPdfResume()">
-                <span id="uploadPdfBtn">Parse PDF Resume</span>
-            </button>
+            <div style="display: flex; gap: 0.5rem;">
+                <button class="btn-submit" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);" onclick="uploadPdfResume()">
+                    <span id="uploadPdfBtn">Parse PDF</span>
+                </button>
+                <button class="btn-submit" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);" onclick="matchPdfResume()">
+                    <span id="matchPdfBtn">🎯 Match Alumni from PDF</span>
+                </button>
+            </div>
         </div>
         <div class="panel">
-            <div class="panel-title">✨ Extracted Structured Profile</div>
+            <div class="panel-title">✨ Resume Profile & Alumni Matches</div>
             <div class="results-container" id="parseResults">
-                <div class="empty-placeholder">Paste text or upload a PDF resume to extract structured profile JSON.</div>
+                <div class="empty-placeholder">Paste text or upload a PDF resume to extract profile and match top alumni mentors.</div>
             </div>
         </div>
     </div>
@@ -641,7 +651,7 @@
         const resBox = document.getElementById('parseResults');
         const btnText = document.getElementById('parseTextBtn');
 
-        btnText.innerHTML = '<span class="loading-spinner"></span> Extracting with Gemini...';
+        btnText.innerHTML = '<span class="loading-spinner"></span> Extracting...';
 
         try {
             const resp = await fetch(`${API_BASE}/api/ai/parse-profile-text`, {
@@ -650,15 +660,39 @@
                 body: JSON.stringify({ rawText: rawText, userRole: "alumni" })
             });
             const data = await resp.json();
-            renderParsedProfile(data.profile, resBox);
+            renderParsedProfile(data.profile, null, resBox);
         } catch (err) {
             resBox.innerHTML = `<div class="empty-placeholder" style="color: #ef4444;">Error: ${err.message}</div>`;
         } finally {
-            btnText.innerHTML = 'Parse Profile Text with Gemini LLM';
+            btnText.innerHTML = 'Parse Profile';
         }
     }
 
-    // 3B. Upload PDF Resume
+    // 3B. Match Alumni from Raw Resume Text
+    async function matchRawTextResume() {
+        const rawText = document.getElementById('parseBioText').value;
+        const resBox = document.getElementById('parseResults');
+        const btnText = document.getElementById('matchTextBtn');
+
+        btnText.innerHTML = '<span class="loading-spinner"></span> Parsing & Matching...';
+        resBox.innerHTML = '<div class="empty-placeholder">Parsing resume with Gemini LLM and matching alumni...</div>';
+
+        try {
+            const resp = await fetch(`${API_BASE}/api/ai/match-resume-text`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ rawText: rawText })
+            });
+            const data = await resp.json();
+            renderParsedProfile(data.extractedProfile, data.matchedAlumni, resBox);
+        } catch (err) {
+            resBox.innerHTML = `<div class="empty-placeholder" style="color: #ef4444;">Error: ${err.message}</div>`;
+        } finally {
+            btnText.innerHTML = '🎯 Match Alumni from Resume';
+        }
+    }
+
+    // 3C. Upload PDF Resume
     async function uploadPdfResume() {
         const fileInput = document.getElementById('resumePdfInput');
         const resBox = document.getElementById('parseResults');
@@ -676,18 +710,45 @@
                 body: formData
             });
             const data = await resp.json();
-            renderParsedProfile(data.profile, resBox);
+            renderParsedProfile(data.profile, null, resBox);
         } catch (err) {
             resBox.innerHTML = `<div class="empty-placeholder" style="color: #ef4444;">Error parsing PDF: ${err.message}</div>`;
         } finally {
-            btnText.innerHTML = 'Parse PDF Resume';
+            btnText.innerHTML = 'Parse PDF';
         }
     }
 
-    function renderParsedProfile(prof, container) {
+    // 3D. Match Alumni from PDF Resume
+    async function matchPdfResume() {
+        const fileInput = document.getElementById('resumePdfInput');
+        const resBox = document.getElementById('parseResults');
+        const btnText = document.getElementById('matchPdfBtn');
+
+        if (!fileInput.files[0]) return alert("Please select a PDF file first.");
+
+        btnText.innerHTML = '<span class="loading-spinner"></span> Matching from PDF...';
+        resBox.innerHTML = '<div class="empty-placeholder">Reading PDF resume and matching alumni...</div>';
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+
+        try {
+            const resp = await fetch(`${API_BASE}/api/ai/match-resume-pdf`, {
+                method: 'POST',
+                body: formData
+            });
+            const data = await resp.json();
+            renderParsedProfile(data.extractedProfile, data.matchedAlumni, resBox);
+        } catch (err) {
+            resBox.innerHTML = `<div class="empty-placeholder" style="color: #ef4444;">Error matching PDF: ${err.message}</div>`;
+        } finally {
+            btnText.innerHTML = '🎯 Match Alumni from PDF';
+        }
+    }
+
+    function renderParsedProfile(prof, matches, container) {
         if (!prof) return container.innerHTML = '<div class="empty-placeholder">No profile extracted.</div>';
         
-        container.innerHTML = `
+        let html = `
             <div class="result-card">
                 <div class="card-header">
                     <div>
@@ -705,8 +766,30 @@
                 </div>
                 ${prof.education && prof.education.length ? `<div style="font-size:0.8rem; color:#94a3b8; margin-top:0.4rem;">🎓 <b>Education:</b> ${prof.education.join(', ')}</div>` : ''}
             </div>
-            <pre class="raw-json">${JSON.stringify(prof, null, 2)}</pre>
         `;
+
+        if (matches && matches.length > 0) {
+            html += `<div style="font-weight:700; margin: 1.2rem 0 0.6rem 0; color:#f8fafc;">🎯 Top Matched Alumni Mentors for this Resume:</div>`;
+            matches.forEach(m => {
+                html += `
+                    <div class="result-card">
+                        <div class="card-header">
+                            <div>
+                                <div class="card-title">${m.name}</div>
+                                <div class="card-subtitle">${m.role} @ ${m.company}</div>
+                            </div>
+                            <span class="badge badge-success">${m.matchPercentage} Match</span>
+                        </div>
+                        <div class="skills-tag-list">
+                            ${m.matchedSkills.map(s => `<span class="skill-tag">${s}</span>`).join('')}
+                        </div>
+                        <div class="reason-box">💡 <b>Match Reason:</b> ${m.reason}</div>
+                    </div>
+                `;
+            });
+        }
+
+        container.innerHTML = html;
     }
 
     // 4. Generate Career Roadmap

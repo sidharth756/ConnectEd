@@ -77,6 +77,27 @@ def run_tests():
     for m in roadmap.recommendedAlumniMentors:
         print(f"  [Mentor] {m.name} ({m.role} at {m.company}) - Match: {m.matchPercentage}")
 
+    # TEST 5: Resume-Based Alumni & Mentor Matching
+    print("\n--- [TEST 5] RESUME-BASED ALUMNI & MENTOR MATCHING ---")
+    from src.ai.services.profile_parser import match_alumni_from_resume_text
+    resume_text = """
+    Sidharth - Senior Full Stack Engineer
+    Bengaluru, India | sidharth@connected.edu
+    Summary: 4+ years of software engineering experience specializing in Python, FastAPI, React, Docker, Kubernetes, AWS, and Cloud Architecture.
+    Education: B.Tech Computer Science from IIT Madras
+    Skills: Python, FastAPI, React, JavaScript, AWS, Docker, Kubernetes, SQL, Microservices
+    Experience: 
+    - Lead Developer at Tech Startup: Built containerized microservices and automated deployment pipelines.
+    """
+    resume_match = match_alumni_from_resume_text(ProfileTextParseRequest(rawText=resume_text))
+    print(f"Resume Matcher Success: {resume_match.success}")
+    print(f"Extracted Profile Name: {resume_match.extractedProfile.name} ({resume_match.extractedProfile.headline})")
+    print(f"Extracted Skills: {resume_match.extractedProfile.skills}")
+    print(f"Total Alumni Mentors Matched: {len(resume_match.matchedAlumni)}")
+    for idx, match in enumerate(resume_match.matchedAlumni[:3], 1):
+        print(f"  {idx}. {match.name} ({match.role} at {match.company}) - Match: {match.matchPercentage}")
+        print(f"     Reason: {match.reason}")
+
     print("\n=======================================================")
     print(" SUCCESS: ALL CONNECTED AI ENGINE TESTS PASSED!")
     print("=======================================================\n")
