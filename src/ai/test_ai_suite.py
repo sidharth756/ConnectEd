@@ -73,6 +73,11 @@ def run_tests():
         print(f"  Phase {phase.phaseNumber}: {phase.title} ({phase.duration})")
         print(f"     Skills to learn: {phase.skillsToLearn}")
         print(f"     Key Projects: {phase.keyProjects}")
+        print(f"     Discovered Resources ({len(phase.resources)}):")
+        for res in phase.resources:
+            safe_title = res.title.encode('ascii', 'ignore').decode('ascii')
+            print(f"       - [{res.category}] {safe_title} ({res.source}) -> {res.url[:45]}...")
+
     print(f"\nRecommended Alumni Mentors Linked ({len(roadmap.recommendedAlumniMentors)}):")
     for m in roadmap.recommendedAlumniMentors:
         print(f"  [Mentor] {m.name} ({m.role} at {m.company}) - Match: {m.matchPercentage}")
@@ -98,9 +103,84 @@ def run_tests():
         print(f"  {idx}. {match.name} ({match.role} at {match.company}) - Match: {match.matchPercentage}")
         print(f"     Reason: {match.reason}")
 
+    # TEST 6: Standalone Tavily Study Resource Search
+    print("\n--- [TEST 6] STANDALONE TAVILY STUDY RESOURCE SEARCH ---")
+    from src.ai.services.tavily_search import search_tavily_resources, classify_category
+    topic_resources = search_tavily_resources("Database Indexing & Query Optimization", "Backend Engineer", 3)
+    print(f"Found {len(topic_resources)} Tavily study resources for 'Database Indexing':")
+    for idx, res in enumerate(topic_resources, 1):
+        safe_title = res.title.encode('ascii', 'ignore').decode('ascii')
+        safe_snippet = res.snippet.encode('ascii', 'ignore').decode('ascii')
+        print(f"  {idx}. [{res.category}] {safe_title} ({res.source})")
+        print(f"     URL: {res.url}")
+        print(f"     Snippet: {safe_snippet[:90]}...")
+
+    # TEST A: Tavily Key Configuration Check
+    print("\n--- [TEST A] TAVILY KEY CONFIGURATION CHECK ---")
+    from src.ai.config import config
+    is_tavily_set = bool(config.TAVILY_API_KEY and config.TAVILY_API_KEY.strip() != "your_tavily_api_key_here")
+    print(f"TAVILY_API_KEY Configured: {'PASS' if is_tavily_set else 'FAIL'}")
+    assert is_tavily_set, "TAVILY_API_KEY must be configured in environment"
+
+    # TEST B & C: Resource Categories Coverage Test
+    print("\n--- [TEST B & C] RESOURCE CATEGORY CLASSIFICATION & DISCOVERY ---")
+    sample_urls = [
+        ("https://docs.python.org/3/", "Python Documentation", "Documentation"),
+        ("https://www.youtube.com/watch?v=12345", "Asyncio Tutorial Video", "Video"),
+        ("https://realpython.com/async-io-python/", "Real Python Guide", "Tutorial"),
+        ("https://www.coursera.org/learn/python", "Python Deep Dive Course", "Course"),
+        ("https://leetcode.com/problems/two-sum/", "LeetCode Practice Problems", "Practice"),
+        ("https://github.com/torvalds/linux", "Linux Source Code Project", "Project")
+    ]
+    for url, title, expected_cat in sample_urls:
+        cat = classify_category(url, title, "")
+        print(f"  Category classification for '{title}' -> {cat} (Expected: {expected_cat})")
+        assert cat == expected_cat, f"Expected {expected_cat} for {url}, got {cat}"
+
+    # TEST D: Endpoint Data Structure Verification
+    print("\n--- [TEST D] /api/ai/search-resources ENDPOINT SCHEMA ---")
+    from src.ai.schemas.roadmap_schemas import TopicResourceSearchRequest
+    from src.ai.main import api_search_tavily_resources
+    ep_request = TopicResourceSearchRequest(topic="Python", targetRole="Senior AI Engineer", maxResults=2)
+    ep_resources = api_search_tavily_resources(ep_request)
+    print(f"Endpoint returned {len(ep_resources)} resources:")
+    for r in ep_resources[:2]:
+        print(f"  - [{r.category}] {r.title} | CTA: {r.ctaText} | URL: {r.url[:40]}...")
+        assert r.url.startswith("http"), "Resource URL must be HTTP/HTTPS"
+        assert r.category in ["Documentation", "Video", "Tutorial", "Course", "Practice", "Project"], "Invalid category"
+
+    # TEST E: Cached Roadmap Auto-Enrichment Verification
+    print("\n--- [TEST E] CACHED ROADMAP ENRICHMENT VERIFICATION ---")
+    from src.ai.services.career_roadmap import _enrich_phases_with_resources
+    from src.ai.schemas.roadmap_schemas import RoadmapResponse, RoadmapPhase, SkillGapAnalysis
+    old_roadmap = RoadmapResponse(
+        studentName="TestStudent",
+        targetRole="Senior AI Engineer",
+        targetCompany="Google",
+        skillGapAnalysis=SkillGapAnalysis(possessedSkills=["Python"], missingSkills=["System Design"], readinessScore=60, analysisSummary="Good foundation"),
+        phases=[
+            RoadmapPhase(phaseNumber=1, title="Core Python", duration="Weeks 1-3", description="Learn Python", skillsToLearn=["Python"], keyProjects=["Queue Engine"], recommendedTopics=["Event Loop Internals"], resources=[])
+        ],
+        recommendedAlumniMentors=[]
+    )
+    assert len(old_roadmap.phases[0].resources) == 0, "Old roadmap should initially have empty resources"
+    enriched = _enrich_phases_with_resources(old_roadmap, "Senior AI Engineer")
+    print(f"Enriched old roadmap phase 1 resources count: {len(enriched.phases[0].resources)}")
+    assert len(enriched.phases[0].resources) > 0, "Enriched roadmap should have non-empty study resources"
+
+    # TEST F: Graceful Failure Simulation Test
+    print("\n--- [TEST F] TAVILY UNCONFIGURED / FAILURE GRACEFUL DEGRADATION ---")
+    orig_key = config.TAVILY_API_KEY
+    config.TAVILY_API_KEY = ""
+    fallback_res = search_tavily_resources("Python", "Senior AI Engineer", 3)
+    print(f"Fallback response when key empty: {len(fallback_res)} resources returned (no crash)")
+    assert fallback_res == [], "Should return empty list gracefully when Tavily unconfigured"
+    config.TAVILY_API_KEY = orig_key
+
     print("\n=======================================================")
     print(" SUCCESS: ALL CONNECTED AI ENGINE TESTS PASSED!")
     print("=======================================================\n")
 
 if __name__ == "__main__":
     run_tests()
+
