@@ -33,8 +33,8 @@ export async function handleCopilotQuery(req, res, next) {
       }
     } catch (e) {}
 
-    // Execute RAG Search
-    const searchQuery = `${prompt} (Target Role: ${userGoal?.targetRole || 'Software Engineer'} at ${userGoal?.targetCompany || 'Tech'})`;
+    // Execute RAG Search directly on the user's explicit query
+    const searchQuery = prompt.trim();
     const ragResult = await globalRAGPipeline.executeSearch(searchQuery, alumniList, 5);
 
     const isLocalLlm = !ragResult.meta?.fallbackMode;
@@ -60,18 +60,17 @@ export async function handleCopilotQuery(req, res, next) {
 
     // Unleash Granite 4.2 3B Full Reasoning & Natural Language Potential
     const llmPrompt = `
-You are the ConnectEd AI Career Copilot, an elite AI Career & Mentorship Advisor for KCE (Kathir College of Engineering) students.
+You are the ConnectEd AI Career Copilot, an intelligent NLP Career & Mentorship Advisor for Kathir College of Engineering (KCE) students.
 
-STUDENT PROFILE:
-- Student Name: ${userGoal?.studentName || 'Student'}
-- Target Career Role: ${userGoal?.targetRole || 'Software Engineer'}
-- Target Company: ${userGoal?.targetCompany || 'Tech Enterprise'}
-- Current Skills: ${(currentSkills || userGoal?.currentSkills || []).join(', ') || 'Software Engineering'}
-
-STUDENT USER PROMPT:
+USER'S EXPLICIT QUERY:
 "${prompt}"
 
-RETRIEVED KCE ALUMNI MENTORS (RAG Vector Database Search across 134 Profiles):
+BACKGROUND USER PROFILE (Optional Context Only):
+- Student Name: ${userGoal?.studentName || 'Student'}
+- Default Target Goal: ${userGoal?.targetRole || 'Software Engineer'} ${userGoal?.targetCompany ? `@ ${userGoal?.targetCompany}` : ''}
+- Current Skills: ${(currentSkills || userGoal?.currentSkills || []).join(', ') || 'Software Engineering'}
+
+RETRIEVED KCE ALUMNI MENTORS (RAG Vector Match for "${prompt}"):
 ${JSON.stringify(suggestedAlumni.map((a, idx) => ({
   index: idx + 1,
   name: a.name,
@@ -82,12 +81,12 @@ ${JSON.stringify(suggestedAlumni.map((a, idx) => ({
   reason: a.matchReason
 })), null, 2)}
 
-INSTRUCTIONS FOR YOUR RESPONSE:
-1. Address the student in a warm, encouraging, executive AI tone.
-2. Directly answer their query using deep domain intelligence.
-3. Integrate the retrieved alumni naturally into your advice, highlighting why their specific background (company, role, skills) makes them the ideal mentor for mock interviews, resume feedback, or direct referral requests.
-4. Format your response cleanly using Markdown with sections (e.g. 🎯 Strategic Career Alignment, 👥 Top Recommended Alumni Mentors, 🚀 Actionable Next Steps).
-5. DO NOT output robotic template code or static lists. Write a natural, highly intelligent, customized response!
+CRITICAL SYSTEM INSTRUCTIONS:
+1. YOUR TOP PRIORITY IS THE USER'S EXPLICIT QUERY: "${prompt}". Answer what the user specifically asked for! If they ask about Frontend Development, Mobile, Cloud, or a specific topic, focus 100% on that topic and the retrieved alumni matching that topic.
+2. DO NOT force their background profile goal (e.g. AI Engineer) if their current query is about something else (e.g. Frontend Development).
+3. Directly answer the user query in a clear, encouraging, executive AI advisor tone.
+4. Highlight why each retrieved alumnus is relevant to the user's specific prompt ("${prompt}").
+5. Format your response cleanly using Markdown sections (e.g., 🎯 Strategic Career Alignment, 👥 Top Recommended Alumni Mentors, 🚀 Actionable Next Steps).
 `;
 
     let generatedText = await generateText(llmPrompt);
