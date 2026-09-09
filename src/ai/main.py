@@ -3,11 +3,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Optional
 
 from src.ai.schemas.alumni_schemas import SearchRequest, StudentProfileSearchRequest, AlumniSearchResult
-from src.ai.schemas.roadmap_schemas import RoadmapRequest, RoadmapResponse
+from src.ai.schemas.roadmap_schemas import RoadmapRequest, RoadmapResponse, TopicResourceSearchRequest, StudyResource
 from src.ai.schemas.profile_schemas import ProfileTextParseRequest, ProfileParseResponse, ResumeMatchResponse
 
 from src.ai.services.alumni_search import search_alumni_by_skills, search_alumni_with_profile
 from src.ai.services.career_roadmap import generate_career_roadmap
+from src.ai.services.tavily_search import search_tavily_resources
 from src.ai.services.profile_parser import (
     parse_profile_text, 
     parse_pdf_resume_bytes,
@@ -71,6 +72,19 @@ def api_generate_career_roadmap(request: RoadmapRequest):
     if not request.targetRole.strip():
         raise HTTPException(status_code=400, detail="Target career role is required.")
     return generate_career_roadmap(request)
+
+@app.post("/api/ai/search-resources", response_model=List[StudyResource])
+def api_search_tavily_resources(request: TopicResourceSearchRequest):
+    """
+    Dynamically searches and categorizes study resources for a specified topic using server-side Tavily API.
+    """
+    if not request.topic.strip():
+        raise HTTPException(status_code=400, detail="Topic string cannot be empty.")
+    return search_tavily_resources(
+        topic=request.topic,
+        target_role=request.targetRole or "",
+        max_results=request.maxResults or 3
+    )
 
 # 3. AI Profile & Resume Parser Endpoints
 @app.post("/api/ai/parse-profile-text", response_model=ProfileParseResponse)

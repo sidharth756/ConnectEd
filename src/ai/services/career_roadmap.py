@@ -5,6 +5,7 @@ from src.ai.config import config
 from src.ai.data.alumni_db import load_alumni_database
 from src.ai.schemas.alumni_schemas import StudentProfile
 from src.ai.services.alumni_search import search_alumni_with_profile
+from src.ai.services.tavily_search import search_topic_study_resources, search_tavily_resources
 from src.ai.schemas.roadmap_schemas import (
     RoadmapRequest,
     RoadmapResponse,
@@ -12,11 +13,43 @@ from src.ai.schemas.roadmap_schemas import (
     RoadmapPhase
 )
 
+def _enrich_phases_with_resources(roadmap: RoadmapResponse, target_role: str) -> RoadmapResponse:
+    """Enriches each phase of the generated roadmap with topic-wise Tavily study resources."""
+    if not roadmap or not roadmap.phases:
+        return roadmap
+
+    max_topics = getattr(config, 'TAVILY_MAX_TOPICS_PER_ROADMAP', 8)
+    max_per_cat = getattr(config, 'TAVILY_MAX_RESULTS_PER_CATEGORY', 3)
+    searched_count = 0
+
+    for phase in roadmap.phases:
+        phase_resources = []
+        # Extract meaningful topics for phase
+        topics = phase.recommendedTopics or [phase.title]
+        
+        for topic_name in topics:
+            if searched_count >= max_topics:
+                break
+            
+            topic_res = search_topic_study_resources(
+                topic=topic_name,
+                target_role=target_role,
+                phase_number=phase.phaseNumber,
+                max_results_per_category=max_per_cat
+            )
+            phase_resources.extend(topic_res)
+            searched_count += 1
+
+        # Preserve phase.resources array with all topic-wise discovered resources
+        phase.resources = phase_resources
+
+    return roadmap
+
 def generate_career_roadmap(request: RoadmapRequest) -> RoadmapResponse:
     """
     100% LLM-Powered Career Goal Analysis & Skill-Gap Roadmap Generator.
     Analyzes student background vs target career role, generates a chronological 4-phase learning roadmap,
-    and links to matching alumni mentors.
+    and links to matching alumni mentors & Tavily study resources.
     """
     db = load_alumni_database()
 
@@ -32,14 +65,17 @@ def generate_career_roadmap(request: RoadmapRequest) -> RoadmapResponse:
     mentor_search_result = search_alumni_with_profile(search_prompt, student_profile, db)
     top_mentors = mentor_search_result.matches[:4]
 
+    roadmap = None
     # 2. Use Gemini LLM to generate structured skill-gap analysis & roadmap phases
     if config.GEMINI_API_KEY:
-        llm_roadmap = _call_gemini_roadmap_llm(request, top_mentors)
-        if llm_roadmap:
-            return llm_roadmap
+        roadmap = _call_gemini_roadmap_llm(request, top_mentors)
 
-    # Fallback deterministic roadmap if API key is unconfigured
-    return _fallback_roadmap(request, top_mentors)
+    if not roadmap:
+        # Fallback deterministic roadmap if API key is unconfigured or call failed
+        roadmap = _fallback_roadmap(request, top_mentors)
+
+    # 3. Enrich roadmap phases with Tavily study resources
+    return _enrich_phases_with_resources(roadmap, request.targetRole)
 
 def _call_gemini_roadmap_llm(request: RoadmapRequest, mentors: List[Any]) -> Optional[RoadmapResponse]:
     prompt = f"""
