@@ -31,7 +31,7 @@ export default function AuthModal({ isOpen, onClose, defaultTab = 'login', onAut
         onClose();
       }
     } catch (err) {
-      setError('Invalid login credentials');
+      setError(err.message || 'Invalid email or password');
     } finally {
       setLoading(false);
     }
@@ -61,7 +61,7 @@ export default function AuthModal({ isOpen, onClose, defaultTab = 'login', onAut
         onClose();
       }
     } catch (err) {
-      setError('Registration failed. Please try again.');
+      setError(err.message || 'Registration failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -249,6 +249,7 @@ export default function AuthModal({ isOpen, onClose, defaultTab = 'login', onAut
                 >
                   <option value="student">Student</option>
                   <option value="alumni">Alumni</option>
+                  <option value="admin">Admin</option>
                 </select>
               </div>
             </div>

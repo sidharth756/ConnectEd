@@ -336,33 +336,39 @@ export const authApi = {
           const json = await res.json();
           if (json.success && json.data) {
             const u = json.data;
-            const roleLower = (u.role || 'STUDENT').toLowerCase();
+            const roleStr = (u.role || 'STUDENT').toUpperCase();
             const formattedUser = {
               id: u.id,
               name: u.name,
               email: u.email,
-              role: roleLower,
+              role: roleStr,
               avatar: u.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=250',
               major: u.studentProfile?.major || u.alumniProfile?.major || 'Computer Science',
               graduationYear: u.studentProfile?.graduationYear || u.alumniProfile?.graduationYear || 2026,
               university: u.studentProfile?.university || u.alumniProfile?.university || 'KCE',
-              targetRole: u.studentProfile?.targetRole || u.alumniProfile?.currentRole || '',
+              targetRole: u.studentProfile?.targetRole || u.alumniProfile?.role || '',
               targetCompany: u.studentProfile?.targetCompany || u.alumniProfile?.company || '',
-              currentSkills: u.studentProfile?.skills || u.alumniProfile?.skills || []
+              currentSkills: u.studentProfile?.skills || u.alumniProfile?.skills || [],
+              studentProfile: u.studentProfile,
+              alumniProfile: u.alumniProfile,
             };
             currentUserSession = formattedUser;
             isAuthenticatedSession = true;
             return { isAuthenticated: true, user: formattedUser };
           }
         }
+        // Token invalid or expired
+        localStorage.removeItem('connected_token');
       } catch (e) {
         console.warn("Session restore from token failed:", e);
       }
     }
-    return {
-      isAuthenticated: isAuthenticatedSession,
-      user: currentUserSession
-    };
+
+    if (isAuthenticatedSession && currentUserSession) {
+      return { isAuthenticated: true, user: currentUserSession };
+    }
+
+    return { isAuthenticated: false, user: null };
   },
 
   async login({ email, password, demoKey }) {
@@ -372,114 +378,111 @@ export const authApi = {
       return { success: true, user: currentUserSession };
     }
 
-    try {
-      const res = await fetch(`${getBackendUrl()}/api/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
+    const res = await fetch(`${getBackendUrl()}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
 
-      const json = await res.json();
-      if (res.ok && json.success) {
-        if (json.token) {
-          localStorage.setItem('connected_token', json.token);
-        }
-        const u = json.user;
-        const roleLower = (u.role || 'STUDENT').toLowerCase();
-        currentUserSession = {
-          id: u.id,
-          name: u.name,
-          email: u.email,
-          role: roleLower,
-          avatar: u.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=250',
-          targetRole: u.targetRole || u.studentProfile?.targetRole || '',
-          targetCompany: u.targetCompany || u.studentProfile?.targetCompany || '',
-        };
-        isAuthenticatedSession = true;
-        return { success: true, user: currentUserSession };
-      } else if (json.error && json.error.message) {
-        throw new Error(json.error.message);
-      }
-    } catch (e) {
-      console.warn("Backend login failed, using fallback session:", e.message);
+    const json = await res.json();
+    if (!res.ok || !json.success) {
+      const errorMsg = json.error?.message || 'Invalid email or password';
+      throw new Error(errorMsg);
     }
 
-    // Default fallback authentication if backend offline or demo user
-    isAuthenticatedSession = true;
+    if (json.token) {
+      localStorage.setItem('connected_token', json.token);
+    }
+    const u = json.user;
+    const roleStr = (u.role || 'STUDENT').toUpperCase();
     currentUserSession = {
-      ...DEMO_USERS.alex,
-      email: email || DEMO_USERS.alex.email
+      id: u.id,
+      name: u.name,
+      email: u.email,
+      role: roleStr,
+      avatar: u.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=250',
+      targetRole: u.targetRole || u.studentProfile?.targetRole || '',
+      targetCompany: u.targetCompany || u.studentProfile?.targetCompany || '',
     };
+    isAuthenticatedSession = true;
+
+    // Refresh full session details from /api/auth/me if available
+    try {
+      const meRes = await fetch(`${getBackendUrl()}/api/auth/me`, {
+        headers: { 'Authorization': `Bearer ${json.token}` }
+      });
+      if (meRes.ok) {
+        const meJson = await meRes.json();
+        if (meJson.success && meJson.data) {
+          const fullUser = meJson.data;
+          currentUserSession = {
+            ...currentUserSession,
+            major: fullUser.studentProfile?.major || fullUser.alumniProfile?.major || 'Computer Science',
+            graduationYear: fullUser.studentProfile?.graduationYear || fullUser.alumniProfile?.graduationYear || 2026,
+            targetRole: fullUser.studentProfile?.targetRole || fullUser.alumniProfile?.role || '',
+            targetCompany: fullUser.studentProfile?.targetCompany || fullUser.alumniProfile?.company || '',
+            currentSkills: fullUser.studentProfile?.skills || fullUser.alumniProfile?.skills || [],
+            studentProfile: fullUser.studentProfile,
+            alumniProfile: fullUser.alumniProfile,
+          };
+        }
+      }
+    } catch (e) {
+      // Continue with login payload
+    }
+
     return { success: true, user: currentUserSession };
   },
 
   async register(userData) {
-    try {
-      const res = await fetch(`${getBackendUrl()}/api/auth/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: userData.name,
-          email: userData.email,
-          password: userData.password,
-          role: (userData.role || 'STUDENT').toUpperCase()
-        })
-      });
+    const roleUpper = (userData.role || 'STUDENT').toUpperCase();
+    const res = await fetch(`${getBackendUrl()}/api/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: userData.name,
+        email: userData.email,
+        password: userData.password,
+        role: roleUpper,
+        major: userData.major || '',
+        graduationYear: userData.graduationYear,
+        targetRole: userData.targetRole || '',
+        targetCompany: userData.targetCompany || '',
+      })
+    });
 
-      const json = await res.json();
-      if (res.ok && json.success) {
-        if (json.token) {
-          localStorage.setItem('connected_token', json.token);
-        }
-        const u = json.user;
-        const roleLower = (u.role || 'STUDENT').toLowerCase();
-        currentUserSession = {
-          id: u.id,
-          name: u.name,
-          email: u.email,
-          role: roleLower,
-          avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=250',
-          major: userData.major || '',
-          graduationYear: Number(userData.graduationYear) || 2026,
-          university: userData.university || 'KCE',
-          targetRole: userData.targetRole || '',
-          targetCompany: userData.targetCompany || '',
-          currentSkills: [],
-        };
-        isAuthenticatedSession = true;
-        return { success: true, user: currentUserSession };
-      } else if (json.error && json.error.message) {
-        throw new Error(json.error.message);
-      }
-    } catch (e) {
-      console.warn("Backend registration failed:", e.message);
+    const json = await res.json();
+    if (!res.ok || !json.success) {
+      const errorMsg = json.error?.message || 'Registration failed';
+      throw new Error(errorMsg);
     }
 
-    isAuthenticatedSession = true;
+    if (json.token) {
+      localStorage.setItem('connected_token', json.token);
+    }
+
+    const u = json.user;
     currentUserSession = {
-      id: 'user_' + Date.now(),
-      name: userData.name || 'New User',
-      email: userData.email,
-      role: userData.role || 'student',
+      id: u.id,
+      name: u.name,
+      email: u.email,
+      role: (u.role || roleUpper).toUpperCase(),
       avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=250',
       major: userData.major || '',
       graduationYear: Number(userData.graduationYear) || 2026,
       university: userData.university || 'KCE',
       targetRole: userData.targetRole || '',
-      targetCompany: '',
+      targetCompany: userData.targetCompany || '',
       currentSkills: [],
-      skillsList: [],
-      skills: [],
-      daysCompleted: 0,
-      readiness: 0,
-      bio: '',
     };
+    isAuthenticatedSession = true;
     return { success: true, user: currentUserSession };
   },
 
   async logout() {
     localStorage.removeItem('connected_token');
     isAuthenticatedSession = false;
+    currentUserSession = null;
     return { success: true };
   }
 };

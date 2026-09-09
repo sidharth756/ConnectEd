@@ -82,7 +82,7 @@ export async function register(req, res, next) {
             create: {
               major: major || '',
               graduationYear: Number(graduationYear) || 2020,
-              currentRole: targetRole || '',
+              role: targetRole || '',
               company: targetCompany || '',
             },
           },

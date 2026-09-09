@@ -102,11 +102,15 @@ export default function App() {
     await authApi.logout();
     setIsAuthenticated(false);
     setActiveUser(null);
+    setActiveTab('dashboard');
+    setActiveMessagingAlumni(null);
+    setActiveMessagingNote('');
   };
 
   const handleAuthSuccess = async (user) => {
     setIsAuthenticated(true);
     setActiveUser(user);
+    setActiveTab('dashboard');
     setIsAuthModalOpen(false);
   };
 
@@ -115,6 +119,7 @@ export default function App() {
     if (res.success) {
       setIsAuthenticated(true);
       setActiveUser(res.user);
+      setActiveTab('dashboard');
     }
   };
 
@@ -124,6 +129,8 @@ export default function App() {
 
   // Mobile Menu Drawer state
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  const userRole = String(activeUser?.role || '').toUpperCase();
 
   return (
     <div className={`${theme} h-screen w-screen overflow-hidden bg-slate-100 dark:bg-[#0d131f] text-slate-900 dark:text-slate-100 flex flex-col selection:bg-indigo-600 selection:text-white transition-colors duration-200`}>
@@ -167,12 +174,12 @@ export default function App() {
           {/* Main Content Area */}
           <main className="flex-1 overflow-y-auto pb-20 md:pb-8 bg-slate-100 dark:bg-[#0d131f]">
             {activeTab === 'dashboard' && (
-              activeUser?.role === 'alumni' ? (
+              userRole === 'ALUMNI' ? (
                 <AlumniPortalDashboard 
                   user={activeUser}
                   onOpenAI={() => setIsAIAssistantOpen(true)}
                 />
-              ) : activeUser?.role === 'admin' ? (
+              ) : userRole === 'ADMIN' ? (
                 <AdminControlCenter 
                   user={activeUser}
                   onOpenAI={() => setIsAIAssistantOpen(true)}
