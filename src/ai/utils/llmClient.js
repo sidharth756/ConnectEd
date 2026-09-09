@@ -6,7 +6,7 @@ import { config } from '../config.js';
 async function tryOllamaGenerate(prompt, schema) {
   try {
     const host = config.ollamaHost || 'http://localhost:11434';
-    const model = config.ollamaModel || 'qwen2.5:3b';
+    const model = config.ollamaModel || 'granite4.2:3b';
 
     const response = await fetch(`${host}/api/generate`, {
       method: 'POST',
@@ -107,7 +107,7 @@ export async function generateText(prompt) {
   if (config.preferOllama) {
     try {
       const host = config.ollamaHost || 'http://localhost:11434';
-      const model = config.ollamaModel || 'qwen2.5:3b';
+      const model = config.ollamaModel || 'granite4.2:3b';
 
       const response = await fetch(`${host}/api/generate`, {
         method: 'POST',

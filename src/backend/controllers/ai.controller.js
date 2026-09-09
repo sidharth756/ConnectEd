@@ -37,8 +37,8 @@ export async function handleCopilotQuery(req, res, next) {
     const searchQuery = `${prompt} (Target Role: ${userGoal?.targetRole || 'Software Engineer'} at ${userGoal?.targetCompany || 'Tech'})`;
     const ragResult = await globalRAGPipeline.executeSearch(searchQuery, alumniList, 5);
 
-    const isQwen = !ragResult.meta?.fallbackMode;
-    const modelSource = isQwen ? 'Local Ollama (Qwen 2.5 3B) RAG Engine' : 'ConnectEd RAG Vector Search';
+    const isLocalLlm = !ragResult.meta?.fallbackMode;
+    const modelSource = isLocalLlm ? 'Local Ollama (Granite 4.2 3B) RAG Engine' : 'ConnectEd RAG Vector Search';
 
     const suggestedAlumni = (ragResult.matches || []).map(m => {
       const orig = alumniList.find(a => String(a.id) === String(m.alumniId) || a.name === m.name) || {};
@@ -58,8 +58,8 @@ export async function handleCopilotQuery(req, res, next) {
       };
     });
 
-    // Unleash Qwen 2.5 3B Full Reasoning & Natural Language Potential
-    const qwenPrompt = `
+    // Unleash Granite 4.2 3B Full Reasoning & Natural Language Potential
+    const llmPrompt = `
 You are the ConnectEd AI Career Copilot, an elite AI Career & Mentorship Advisor for KCE (Kathir College of Engineering) students.
 
 STUDENT PROFILE:
@@ -90,7 +90,7 @@ INSTRUCTIONS FOR YOUR RESPONSE:
 5. DO NOT output robotic template code or static lists. Write a natural, highly intelligent, customized response!
 `;
 
-    let generatedText = await generateText(qwenPrompt);
+    let generatedText = await generateText(llmPrompt);
 
     if (!generatedText) {
       // Clean fallback formatting if offline

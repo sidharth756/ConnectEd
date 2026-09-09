@@ -246,7 +246,7 @@ export default function AINetworkingAssistant({ isOpen, onClose }) {
                 {msg.sender === 'assistant' && (
                   <div className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 mb-2.5 border border-indigo-500/20">
                     <Sparkles className="w-2.5 h-2.5" />
-                    <span>Qwen 2.5 RAG Engine</span>
+                    <span>Granite 4.2 RAG Engine</span>
                   </div>
                 )}
 
