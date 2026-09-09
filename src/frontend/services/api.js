@@ -805,6 +805,22 @@ export const roadmapApi = {
     return { success: false };
   },
 
+  async searchTopicResources(topic, targetRole = '') {
+    try {
+      const res = await fetch(`${getAIUrl()}/api/ai/search-resources`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topic, targetRole, maxResults: 3 })
+      });
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch (e) {
+      console.warn("Topic resources fetch error:", e);
+    }
+    return [];
+  },
+
   async generateAIRoadmap({ targetRole, currentSkills = [], studentName = 'Student', bio = '', timelineWeeks = 12 }) {
     try {
       const res = await fetch(`${getBackendUrl()}/api/career/roadmap/generate`, {
@@ -833,6 +849,81 @@ export const roadmapApi = {
       console.warn("Backend RAG Roadmap generator error, using smart fallback:", e);
     }
 
+    const buildFallbackResources = (topic, pNum) => [
+      {
+        id: `res_${pNum}_doc`,
+        title: `${topic} Official Documentation & Developer Reference`,
+        url: topic.toLowerCase().includes('docker') ? 'https://docs.docker.com/' : 'https://docs.python.org/3/',
+        category: 'Documentation',
+        source: 'Official Docs',
+        snippet: `Comprehensive official developer documentation and technical guides for ${topic}.`,
+        score: 0.94,
+        topic: topic,
+        phaseNumber: pNum,
+        ctaText: 'Read Docs'
+      },
+      {
+        id: `res_${pNum}_vid`,
+        title: `${topic} Complete Video Masterclass Tutorial`,
+        url: 'https://www.youtube.com/watch?v=Aceg0n04LJw',
+        category: 'Video',
+        source: 'youtube.com',
+        snippet: `Step-by-step practical video tutorial covering ${topic} architectural principles and production usage.`,
+        score: 0.90,
+        topic: topic,
+        phaseNumber: pNum,
+        ctaText: 'Watch Video'
+      },
+      {
+        id: `res_${pNum}_tut`,
+        title: `Deep Dive Tutorial: ${topic} Engineering Best Practices`,
+        url: 'https://realpython.com/',
+        category: 'Tutorial',
+        source: 'realpython.com',
+        snippet: `In-depth hands-on technical tutorial breaking down ${topic} internals, common pitfalls, and design patterns.`,
+        score: 0.88,
+        topic: topic,
+        phaseNumber: pNum,
+        ctaText: 'Learn Tutorial'
+      },
+      {
+        id: `res_${pNum}_crs`,
+        title: `Production ${topic} & Backend Engineering Specialization`,
+        url: 'https://www.coursera.org/resources/back-end-development-interview-prep-guide',
+        category: 'Course',
+        source: 'coursera.org',
+        snippet: `Structured learning pathway and certification prep course focused on ${topic}.`,
+        score: 0.86,
+        topic: topic,
+        phaseNumber: pNum,
+        ctaText: 'View Course'
+      },
+      {
+        id: `res_${pNum}_prc`,
+        title: `${topic} Coding Challenges & Practice Labs`,
+        url: 'https://leetcode.com/problemset/all/',
+        category: 'Practice',
+        source: 'leetcode.com',
+        snippet: `Interactive coding challenges, query tuning exercises, and algorithmic practice problems for ${topic}.`,
+        score: 0.85,
+        topic: topic,
+        phaseNumber: pNum,
+        ctaText: 'Practice Problems'
+      },
+      {
+        id: `res_${pNum}_prj`,
+        title: `GitHub Repository: ${topic} Open Source Production Project`,
+        url: 'https://github.com/jaydeepkarale/backend-engineering-resources',
+        category: 'Project',
+        source: 'github.com',
+        snippet: `Production-ready open-source GitHub repository featuring clean code and deployment manifests for ${topic}.`,
+        score: 0.89,
+        topic: topic,
+        phaseNumber: pNum,
+        ctaText: 'View Project'
+      }
+    ];
+
     const fallbackData = {
       studentName,
       targetRole,
@@ -852,6 +943,7 @@ export const roadmapApi = {
           skillsToLearn: ['Data Structures & Algorithms', 'Linux CLI', 'Git Flow'],
           keyProjects: ['Automated Build & Testing Suite'],
           recommendedTopics: ['Async Architecture', 'Git Branching Strategies', 'Clean Code Principles'],
+          resources: ['Async Architecture', 'Git Branching Strategies'].flatMap(t => buildFallbackResources(t, 1)),
           tasks: [
             { id: 'p1_1', text: 'Complete Data Structures & Algorithms Benchmark', done: true },
             { id: 'p1_2', text: 'Configure Linux & Git Workflow Pipeline', done: true }
@@ -865,6 +957,7 @@ export const roadmapApi = {
           skillsToLearn: ['Docker', 'PostgreSQL Query Tuning', 'REST & GraphQL APIs'],
           keyProjects: ['Containerized Multi-Service Web Application'],
           recommendedTopics: ['Database Indexing', 'API Authentication & JWT', 'Docker Compose'],
+          resources: ['Database Indexing', 'Docker Compose'].flatMap(t => buildFallbackResources(t, 2)),
           tasks: [
             { id: 'p2_1', text: 'Build Production RESTful API with Auth', done: false },
             { id: 'p2_2', text: 'Containerize Application with Docker Compose', done: false }
@@ -878,6 +971,7 @@ export const roadmapApi = {
           skillsToLearn: ['AWS EC2 / S3', 'GitHub Actions CI/CD', 'Prometheus & Grafana'],
           keyProjects: [`Production-Grade ${targetRole} Portfolio Project`],
           recommendedTopics: ['Cloud Hosting', 'Continuous Delivery', 'System Monitoring & Logging'],
+          resources: ['Cloud Hosting', 'Continuous Delivery'].flatMap(t => buildFallbackResources(t, 3)),
           tasks: [
             { id: 'p3_1', text: 'Deploy Application Stack to AWS Cloud', done: false },
             { id: 'p3_2', text: 'Implement Automated GitHub Actions CI/CD Pipeline', done: false }
@@ -891,6 +985,7 @@ export const roadmapApi = {
           skillsToLearn: ['System Design', 'Scalability & Caching', 'Mock Interviews'],
           keyProjects: ['Interactive Live Demo & Technical Documentation'],
           recommendedTopics: ['Redis Distributed Caching', 'Load Balancing', 'Alumni Mock Interview'],
+          resources: ['Redis Distributed Caching', 'Load Balancing'].flatMap(t => buildFallbackResources(t, 4)),
           tasks: [
             { id: 'p4_1', text: 'Complete Mock System Design Interview Loop', done: false },
             { id: 'p4_2', text: 'Conduct Portfolio Review & Referral Chat with Alumni Mentor', done: false }

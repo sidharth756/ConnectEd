@@ -27,6 +27,7 @@ import {
   Plus
 } from 'lucide-react';
 import { roadmapApi, userApi, careerIntelligenceApi } from '../services/api';
+import StudyResourcesList from '../components/StudyResourcesList';
 
 export default function CareerRoadmapPage({ user: propUser, setActiveTab, onOpenAI }) {
   const [roadmapData, setRoadmapData] = useState(null);
@@ -124,6 +125,8 @@ export default function CareerRoadmapPage({ user: propUser, setActiveTab, onOpen
         parsedRoadmap = getDefault4PhaseRoadmap(u?.targetRole, u);
       }
 
+      // Check if any phase lacks study resources and perform auto-enrichment in background
+      const needsEnrichment = parsedRoadmap.phases.some(p => !p.resources || p.resources.length === 0);
       setRoadmapData(parsedRoadmap);
 
       if (parsedRoadmap && parsedRoadmap.phases && parsedRoadmap.phases.length > 0) {
@@ -135,6 +138,11 @@ export default function CareerRoadmapPage({ user: propUser, setActiveTab, onOpen
       const targetRole = parsedRoadmap?.targetRole || u?.targetRole || 'Senior AI Engineer';
       const skills = parsedRoadmap?.skillGapAnalysis?.possessedSkills || u?.skills || [];
       fetchMarketIntel(targetRole, skills);
+
+      if (needsEnrichment) {
+        // Auto-enrich resources live from Tavily AI endpoint
+        enrichRoadmapPhasesLive(parsedRoadmap, targetRole);
+      }
     }
     load();
   }, []);
@@ -154,6 +162,125 @@ export default function CareerRoadmapPage({ user: propUser, setActiveTab, onOpen
     }
   }
 
+  async function enrichRoadmapPhasesLive(currentRoadmap, targetRole) {
+    if (!currentRoadmap || !currentRoadmap.phases) return;
+    let updated = false;
+    const enrichedPhases = await Promise.all(
+      currentRoadmap.phases.map(async (phase) => {
+        if (phase.resources && phase.resources.length > 0) return phase;
+        
+        const topics = phase.recommendedTopics || [phase.title];
+        let phaseRes = [];
+        for (const t of topics.slice(0, 2)) {
+          const res = await roadmapApi.searchTopicResources(t, targetRole);
+          if (Array.isArray(res) && res.length > 0) {
+            phaseRes.push(...res);
+          }
+        }
+        if (phaseRes.length > 0) {
+          updated = true;
+          return { ...phase, resources: phaseRes };
+        }
+        return phase;
+      })
+    );
+
+    if (updated) {
+      const newRoadmapData = { ...currentRoadmap, phases: enrichedPhases };
+      setRoadmapData(newRoadmapData);
+      roadmapApi.saveRoadmap({
+        studentId: 'student1',
+        targetRole: newRoadmapData.targetRole || targetRole,
+        roadmapData: newRoadmapData,
+        skillsToAcquire: newRoadmapData.skillGapAnalysis?.missingSkills || []
+      });
+    }
+  }
+
+  function generateDefaultResourcesForTopic(topicName, targetRole, phaseNum) {
+    const role = targetRole || 'Software Engineer';
+    return [
+      {
+        id: `res_doc_${phaseNum}_1`,
+        title: `${topicName} Official Documentation & Developer Reference`,
+        url: topicName.toLowerCase().includes('python') 
+          ? 'https://docs.python.org/3/' 
+          : topicName.toLowerCase().includes('postgre') || topicName.toLowerCase().includes('index')
+            ? 'https://www.postgresql.org/docs/current/indexes.html'
+            : topicName.toLowerCase().includes('docker')
+              ? 'https://docs.docker.com/build/building/multi-stage/'
+              : 'https://developer.mozilla.org/en-US/docs/Web',
+        category: 'Documentation',
+        source: 'Official Docs',
+        snippet: `Comprehensive official documentation and technical specifications for mastering ${topicName} in enterprise software production environments.`,
+        score: 0.95,
+        topic: topicName,
+        phaseNumber: phaseNum,
+        ctaText: 'Read Docs'
+      },
+      {
+        id: `res_vid_${phaseNum}_1`,
+        title: `${topicName} Complete Masterclass & Engineering Walkthrough`,
+        url: 'https://www.youtube.com/watch?v=Aceg0n04LJw',
+        category: 'Video',
+        source: 'youtube.com',
+        snippet: `In-depth video lecture and step-by-step practical implementation tutorial covering ${topicName} architectural principles and production usage.`,
+        score: 0.91,
+        topic: topicName,
+        phaseNumber: phaseNum,
+        ctaText: 'Watch Video'
+      },
+      {
+        id: `res_tut_${phaseNum}_1`,
+        title: `Deep Dive Guide: ${topicName} Best Practices & Architecture Patterns`,
+        url: 'https://realpython.com/async-io-python/',
+        category: 'Tutorial',
+        source: 'realpython.com',
+        snippet: `Detailed hands-on technical tutorial breaking down ${topicName} internals, common pitfalls, memory optimization, and enterprise design patterns.`,
+        score: 0.88,
+        topic: topicName,
+        phaseNumber: phaseNum,
+        ctaText: 'Learn Tutorial'
+      },
+      {
+        id: `res_crs_${phaseNum}_1`,
+        title: `Production ${topicName} & Backend Engineering Specialization`,
+        url: 'https://www.coursera.org/resources/back-end-development-interview-prep-guide',
+        category: 'Course',
+        source: 'coursera.org',
+        snippet: `Structured learning pathway and certification prep course focused on building production-grade solutions using ${topicName}.`,
+        score: 0.86,
+        topic: topicName,
+        phaseNumber: phaseNum,
+        ctaText: 'View Course'
+      },
+      {
+        id: `res_prc_${phaseNum}_1`,
+        title: `${topicName} Coding Labs & Algorithm Practice Problems`,
+        url: 'https://leetcode.com/problemset/all/',
+        category: 'Practice',
+        source: 'leetcode.com',
+        snippet: `Interactive coding challenges, query tuning exercises, and algorithmic practice problems centered on ${topicName}.`,
+        score: 0.84,
+        topic: topicName,
+        phaseNumber: phaseNum,
+        ctaText: 'Practice Problems'
+      },
+      {
+        id: `res_prj_${phaseNum}_1`,
+        title: `GitHub Repository: ${topicName} Open Source Reference Implementation`,
+        url: 'https://github.com/jaydeepkarale/backend-engineering-resources',
+        category: 'Project',
+        source: 'github.com',
+        snippet: `Production-ready open-source GitHub repository featuring clean code, automated tests, and deployment manifests for ${topicName}.`,
+        score: 0.89,
+        topic: topicName,
+        phaseNumber: phaseNum,
+        ctaText: 'View Project'
+      }
+    ];
+  }
+
   function getDefault4PhaseRoadmap(targetRole, userInfo) {
     const isDemoAlex = userInfo?.id === 'user_101' || userInfo?.email === 'alex.johnson@kce.edu';
     const hasRole = Boolean(targetRole || userInfo?.targetRole);
@@ -161,6 +288,11 @@ export default function CareerRoadmapPage({ user: propUser, setActiveTab, onOpen
     const companyName = userInfo?.targetCompany || (isDemoAlex ? 'Google DeepMind' : '');
     const possessed = (userInfo?.skillsList || userInfo?.skills?.map(s => typeof s === 'string' ? s : s.name)) || (isDemoAlex ? ['Python', 'React', 'Git', 'Data Structures'] : []);
     const readiness = userInfo?.readiness !== undefined && userInfo?.readiness !== null && userInfo?.readiness !== 0 ? userInfo.readiness : (isDemoAlex ? 64 : 0);
+
+    const p1Topics = ['Event Loop Internals', 'Memory Optimization & Garbage Collection', 'Clean Code Principles'];
+    const p2Topics = ['B-Tree Indexing & EXPLAIN ANALYZE', 'Write-Through vs Cache-Aside Patterns', 'HNSW Vector Indexes'];
+    const p3Topics = ['Container Security & Image Minimization', 'Zero-downtime Rolling Updates', 'Observability & Metrics'];
+    const p4Topics = ['Distributed Rate Limiting (Token Bucket)', 'CAP Theorem & Eventual Consistency', 'Behavioral & Architecture Interview Prep'];
 
     return {
       studentName: userInfo?.name || (isDemoAlex ? 'Alex Johnson' : 'Student'),
@@ -182,7 +314,8 @@ export default function CareerRoadmapPage({ user: propUser, setActiveTab, onOpen
           description: 'Solidify core programming language internals, asynchronous I/O models, and clean architectural design patterns.',
           skillsToLearn: ['Data Structures & Algorithms', 'Python Internals', 'Async Concurrency', 'REST & gRPC APIs'],
           keyProjects: ['High-Throughput Concurrent Task Queue Engine'],
-          recommendedTopics: ['Event Loop Internals', 'Memory Optimization & Garbage Collection', 'Clean Code Principles'],
+          recommendedTopics: p1Topics,
+          resources: p1Topics.flatMap((t, idx) => generateDefaultResourcesForTopic(t, roleName, 1)),
           tasks: [
             { id: 'p1_t1', text: 'Master Advanced Async/Await & Event Loop Internals', done: true },
             { id: 'p1_t2', text: 'Implement Custom Concurrent Queue with Exponential Backoff Retry', done: true },
@@ -196,7 +329,8 @@ export default function CareerRoadmapPage({ user: propUser, setActiveTab, onOpen
           description: 'Master relational schema optimization, query indexing, caching strategies, and vector data persistence.',
           skillsToLearn: ['PostgreSQL Indexing & Partitioning', 'Redis Caching Clusters', 'Vector DBs (pgvector/Pinecone)', 'Schema Migrations'],
           keyProjects: ['Distributed Cache & Vector Search Engine for AI Embeddings'],
-          recommendedTopics: ['B-Tree Indexing & EXPLAIN ANALYZE', 'Write-Through vs Cache-Aside Patterns', 'HNSW Vector Indexes'],
+          recommendedTopics: p2Topics,
+          resources: p2Topics.flatMap((t, idx) => generateDefaultResourcesForTopic(t, roleName, 2)),
           tasks: [
             { id: 'p2_t1', text: 'Optimize PostgreSQL Queries using Composite Indexes & EXPLAIN ANALYZE', done: true },
             { id: 'p2_t2', text: 'Configure Distributed Redis Cluster with LRU Eviction Policies', done: false },
@@ -210,7 +344,8 @@ export default function CareerRoadmapPage({ user: propUser, setActiveTab, onOpen
           description: 'Deploy microservice stacks using Docker containers, automated CI/CD pipelines, and cloud orchestrators.',
           skillsToLearn: ['Docker Multi-stage Builds', 'Kubernetes Orchestration', 'CI/CD Pipelines (GitHub Actions)', 'Prometheus & Grafana Tracing'],
           keyProjects: ['Production CI/CD Pipeline & Kubernetes Deployment Manifests'],
-          recommendedTopics: ['Container Security & Image Minimization', 'Zero-downtime Rolling Updates', 'Observability & Metrics'],
+          recommendedTopics: p3Topics,
+          resources: p3Topics.flatMap((t, idx) => generateDefaultResourcesForTopic(t, roleName, 3)),
           tasks: [
             { id: 'p3_t1', text: 'Dockerize Full-Stack Services with Multi-stage Minimal Images', done: false },
             { id: 'p3_t2', text: 'Setup Automated GitHub Actions CI/CD Integration Pipeline', done: false },
@@ -224,7 +359,8 @@ export default function CareerRoadmapPage({ user: propUser, setActiveTab, onOpen
           description: 'Synthesize full-stack systems knowledge into high-availability architecture diagrams and practice mock technical interviews.',
           skillsToLearn: ['System Design Architecture', 'Load Balancing & Rate Limiting', 'Failover & Circuit Breakers', 'Alumni Mock Interview Mastery'],
           keyProjects: ['End-to-End Scalable System Architecture Portfolio Presentation'],
-          recommendedTopics: ['Distributed Rate Limiting (Token Bucket)', 'CAP Theorem & Eventual Consistency', 'Behavioral & Architecture Interview Prep'],
+          recommendedTopics: p4Topics,
+          resources: p4Topics.flatMap((t, idx) => generateDefaultResourcesForTopic(t, roleName, 4)),
           tasks: [
             { id: 'p4_t1', text: 'Design End-to-End High Availability System Architecture Diagram', done: false },
             { id: 'p4_t2', text: 'Schedule Mock Technical Architecture Interview with Verified Alumni Mentor', done: false },
@@ -237,9 +373,10 @@ export default function CareerRoadmapPage({ user: propUser, setActiveTab, onOpen
 
   function normalizeLegacyRoadmap(legacyArray, userInfo) {
     if (!legacyArray || legacyArray.length === 0) return getDefault4PhaseRoadmap(userInfo?.targetRole, userInfo);
+    const role = userInfo?.targetRole || 'Software Engineer';
     return {
       studentName: userInfo?.name || 'Alex Johnson',
-      targetRole: userInfo?.targetRole || 'Software Engineer',
+      targetRole: role,
       targetCompany: userInfo?.targetCompany || 'Google',
       skillGapAnalysis: {
         possessedSkills: userInfo?.skills?.map(s => typeof s === 'string' ? s : s.name) || ['Java', 'React', 'SQL'],
@@ -247,19 +384,25 @@ export default function CareerRoadmapPage({ user: propUser, setActiveTab, onOpen
         readinessScore: userInfo?.readiness || 65,
         analysisSummary: `Solid background. Focus on system architecture and cloud infrastructure to reach target readiness.`
       },
-      phases: legacyArray.map((node, idx) => ({
-        phaseNumber: idx + 1,
-        title: node.title || `Phase ${idx + 1}`,
-        duration: node.duration || `Weeks ${idx * 3 + 1}-${idx * 3 + 3}`,
-        description: node.subtitle || 'Milestone phase for target role mastery.',
-        skillsToLearn: node.skills || ['System Design', 'Docker', 'PostgreSQL'],
-        keyProjects: node.projects || ['Hands-on Architecture Project'],
-        recommendedTopics: ['REST APIs', 'Cloud Services', 'Database Query Tuning'],
-        tasks: node.tasks || [
-          { id: `t_${idx}_1`, text: 'Core Architecture Review', done: true },
-          { id: `t_${idx}_2`, text: 'Build Practical Demo Module', done: false }
-        ]
-      }))
+      phases: legacyArray.map((node, idx) => {
+        const topics = node.recommendedTopics || ['REST APIs', 'Cloud Services', 'Database Query Tuning'];
+        return {
+          phaseNumber: idx + 1,
+          title: node.title || `Phase ${idx + 1}`,
+          duration: node.duration || `Weeks ${idx * 3 + 1}-${idx * 3 + 3}`,
+          description: node.subtitle || 'Milestone phase for target role mastery.',
+          skillsToLearn: node.skills || ['System Design', 'Docker', 'PostgreSQL'],
+          keyProjects: node.projects || ['Hands-on Architecture Project'],
+          recommendedTopics: topics,
+          resources: node.resources && node.resources.length > 0
+            ? node.resources
+            : topics.flatMap(t => generateDefaultResourcesForTopic(t, role, idx + 1)),
+          tasks: node.tasks || [
+            { id: `t_${idx}_1`, text: 'Core Architecture Review', done: true },
+            { id: `t_${idx}_2`, text: 'Build Practical Demo Module', done: false }
+          ]
+        };
+      })
     };
   }
 
@@ -969,6 +1112,9 @@ export default function CareerRoadmapPage({ user: propUser, setActiveTab, onOpen
                           </div>
                         </div>
                       )}
+
+                      {/* Tavily-Powered Study Resources Component */}
+                      <StudyResourcesList resources={phase.resources} topics={phase.recommendedTopics} />
                     </div>
                   )}
                 </div>
