@@ -805,31 +805,32 @@ export const roadmapApi = {
     return { success: false };
   },
 
-  async generateAIRoadmap({ targetRole, currentSkills = [], studentName = 'Aarav Sharma', bio = '', timelineWeeks = 12 }) {
+  async generateAIRoadmap({ targetRole, currentSkills = [], studentName = 'Student', bio = '', timelineWeeks = 12 }) {
     try {
-      const aiRes = await fetch(`${getAIUrl()}/api/ai/generate-roadmap`, {
+      const res = await fetch(`${getBackendUrl()}/api/career/roadmap/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          studentName,
           targetRole,
           currentSkills,
-          bio,
-          timelineWeeks
+          timelineWeeks,
+          studentName
         })
       });
-      if (aiRes.ok) {
-        const aiData = await aiRes.json();
-        await this.saveRoadmap({
-          studentId: 'student1',
-          targetRole,
-          roadmapData: aiData,
-          skillsToAcquire: aiData.skillGapAnalysis?.missingSkills || []
-        });
-        return aiData;
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.data) {
+          await this.saveRoadmap({
+            studentId: 'student1',
+            targetRole,
+            roadmapData: json.data,
+            skillsToAcquire: json.data.skillGapAnalysis?.missingSkills || []
+          });
+          return json.data;
+        }
       }
     } catch (e) {
-      console.warn("FastAPI AI Roadmap generator offline, using fallback:", e);
+      console.warn("Backend RAG Roadmap generator error, using smart fallback:", e);
     }
 
     const fallbackData = {
