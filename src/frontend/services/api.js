@@ -493,47 +493,42 @@ export const alumniApi = {
         if (json.success && Array.isArray(json.data) && json.data.length > 0) {
           let list = json.data.map(item => {
             const profile = item.alumniProfile || {};
+            const roleStr = item.role || item.title || profile.role || profile.title || 'Software Developer';
+            const companyStr = item.company || profile.company || 'KCE Partner Company';
+            const bioStr = item.bio || profile.bio || `${item.name} is a KCE Alum specializing in ${roleStr}.`;
+            const skillsArr = (Array.isArray(item.skills) && item.skills.length > 0) 
+              ? item.skills 
+              : ((Array.isArray(profile.skills) && profile.skills.length > 0) ? profile.skills : ['Engineering']);
+            const locationStr = item.location || profile.location || 'India';
+            const degreeStr = item.degree || profile.degree || 'B.E. Engineering';
+            const majorStr = item.major || profile.major || 'Engineering';
+
             return {
-              id: item.id || `alum_${Math.random()}`,
-              username: item.username,
+              id: item.id,
+              username: item.username || item.id,
               name: item.name || 'Alumni Mentor',
-              avatar: item.avatarUrl || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=250',
-              title: profile.currentRole || profile.title || 'Senior Engineer',
-              company: profile.company || 'Tech Leader',
-              graduationYear: profile.graduationYear || 2019,
-              university: profile.university || 'KCE',
-              degree: profile.degree || 'B.E. Computer Science',
-              major: profile.major || 'Computer Science',
-              location: profile.location || 'San Francisco, CA',
-              matchScore: profile.matchScore || 90,
-              impactScore: profile.impactScore || 850,
-              menteesGuided: profile.menteesGuided || 18,
-              badgeTier: profile.badgeTier || 'Senior Mentor ⚡',
-              matchReason: profile.matchReason || 'Verified KCE Alum • Career Match',
-              skills: Array.isArray(profile.skills) ? profile.skills : ['Python', 'System Design', 'React'],
-              bio: profile.bio || 'Verified KCE Alum mentoring students on target career goals.',
-              availability: profile.availability || 'Available for Mentorship',
-              pastRoles: profile.pastRoles || ['Senior SWE @ Tech', 'KCE Alum'],
-              linkedInUrl: profile.linkedinUrl || 'https://linkedin.com'
+              avatar: item.avatar || item.avatarUrl || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=250',
+              avatarUrl: item.avatarUrl || item.avatar || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=250',
+              title: roleStr,
+              role: roleStr,
+              company: companyStr,
+              graduationYear: item.graduationYear || profile.graduationYear || 2021,
+              university: 'KCE',
+              degree: degreeStr,
+              major: majorStr,
+              domain: majorStr,
+              location: locationStr,
+              matchScore: item.matchScore || profile.matchScore || 85,
+              impactScore: item.impactScore || profile.impactScore || 850,
+              menteesGuided: item.menteesGuided || profile.menteesGuided || 10,
+              badgeTier: item.badgeTier || profile.badgeTier || 'Verified Alum ✨',
+              matchReason: item.matchReason || profile.matchReason || bioStr,
+              skills: skillsArr,
+              bio: bioStr,
+              availability: item.availability || profile.availability || 'Available for Mentorship',
+              linkedInUrl: item.linkedInUrl || item.linkedin || profile.linkedinUrl || '',
+              linkedin: item.linkedin || item.linkedInUrl || profile.linkedinUrl || ''
             };
-          });
-
-          const norm = s => String(s || '').replace('_', '-').toLowerCase();
-          list = list.map(item => {
-            const local = MOCK_ALUMNI.find(m => 
-              norm(m.id) === norm(item.id) || 
-              (m.name && item.name && norm(m.name) === norm(item.name))
-            );
-            if (local && local.impactScore > (item.impactScore || 0)) {
-              return { ...item, impactScore: local.impactScore, badgeTier: local.badgeTier, id: local.id, name: local.name };
-            }
-            return item;
-          });
-
-          MOCK_ALUMNI.forEach(ma => {
-            if (ma.impactScore > 950 && !list.some(l => norm(l.id) === norm(ma.id) || norm(l.name) === norm(ma.name))) {
-              list.push(ma);
-            }
           });
 
           if (sortBy === 'impactScore') {
