@@ -10,6 +10,7 @@ export const AlumniMatchSchema = z.object({
   role: z.string(),
   company: z.string(),
   matchedSkills: z.array(z.string()),
+  matchScore: z.number().optional(),
   reason: z.string().min(1, "Must provide a clear, human-understandable reason for the match")
 });
 
