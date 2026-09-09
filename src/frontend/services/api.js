@@ -1,5 +1,6 @@
 // API Service layer for ConnectEd Frontend
 // Multi-goal support, dynamic skill benchmarks, and Authentication API
+import alumniMockData from '../../ai/data/alumniMockData.js';
 
 const CAREER_GOALS = {
   'AI / ML Engineer': {
@@ -248,6 +249,8 @@ const DEMO_USERS = {
     university: 'KCE',
     targetRole: 'Senior AI Engineer',
     targetCompany: 'Google DeepMind',
+    targetDays: 100,
+    daysCompleted: 36,
     currentSkills: ['Python', 'PyTorch', 'React', 'JavaScript', 'Node.js', 'SQL'],
   },
   priya: {
@@ -259,92 +262,34 @@ const DEMO_USERS = {
     major: 'Computer Science',
     graduationYear: 2019,
     university: 'KCE',
+    company: 'Google',
+    title: 'Senior Software Engineer',
+    impactScore: 985,
+    menteesGuided: 34,
     targetRole: 'Senior Software Engineer',
     targetCompany: 'Google',
     currentSkills: ['System Design', 'Java', 'AWS', 'Python'],
+  },
+  admin: {
+    id: 'admin_1',
+    name: 'Dr. Sarah Chen',
+    email: 'sarah.chen@kce.edu',
+    role: 'admin',
+    avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&q=80&w=250',
+    major: 'Computer Science & AI',
+    graduationYear: 2012,
+    university: 'KCE',
+    title: 'Head of Alumni Relations & Platform Admin',
+    company: 'KCE Institute',
+    targetRole: 'Platform Administrator',
+    targetCompany: 'KCE ConnectEd Platform',
+    currentSkills: ['Platform Governance', 'Alumni Analytics', 'Career Mentorship Strategy'],
   }
 };
 
 let currentUserSession = DEMO_USERS.alex;
 
-const MOCK_ALUMNI = [
-  {
-    id: 'alum_1',
-    name: 'Priya Sharma',
-    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=250',
-    title: 'Senior Software Engineer',
-    company: 'Google',
-    graduationYear: 2019,
-    university: 'KCE',
-    degree: 'B.E. Computer Science & Engineering',
-    major: 'Computer Science',
-    location: 'San Francisco, CA',
-    matchScore: 92,
-    matchReason: 'Works in your target role • 2019 KCE Alum',
-    skills: ['System Design', 'Java', 'AWS', 'Python'],
-    bio: '2019 KCE CSE Alum now working on Google Cloud infrastructure. Passionate about guiding KCE juniors in system design.',
-    availability: 'Available for Mentorship',
-    pastRoles: ['Software Engineer @ Meta', 'Intern @ Amazon', 'B.E. CSE — KCE (Class of 2019)'],
-    linkedInUrl: 'https://linkedin.com'
-  },
-  {
-    id: 'alum_2',
-    name: 'Marcus Vance',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=250',
-    title: 'Principal Software Architect',
-    company: 'Stripe',
-    graduationYear: 2017,
-    university: 'KCE',
-    degree: 'B.E. Computer Science & Engineering',
-    major: 'Software Engineering',
-    location: 'New York, NY',
-    matchScore: 89,
-    matchReason: '2017 KCE Alum • Same career goal trajectory',
-    skills: ['Node.js', 'Distributed Systems', 'PostgreSQL', 'System Architecture'],
-    bio: '2017 KCE Alum building core financial infrastructure at Stripe. Mentoring KCE students on distributed architecture.',
-    availability: 'Referral Only',
-    pastRoles: ['Senior Backend Engineer @ Uber', 'B.E. CSE — KCE (Class of 2017)'],
-    linkedInUrl: 'https://linkedin.com'
-  },
-  {
-    id: 'alum_3',
-    name: 'Elena Rostova',
-    avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&q=80&w=250',
-    title: 'Product Lead - AI Infrastructure',
-    company: 'OpenAI',
-    graduationYear: 2020,
-    university: 'KCE',
-    degree: 'B.E. Computer Science & Engineering',
-    major: 'Computer Science',
-    location: 'San Francisco, CA',
-    matchScore: 86,
-    matchReason: '2020 KCE Alum • AI Infrastructure Lead',
-    skills: ['AI Strategy', 'Product Management', 'API Infrastructure'],
-    bio: '2020 KCE Alum leading product infrastructure for frontier models at OpenAI.',
-    availability: 'Available for Mentorship',
-    pastRoles: ['APM @ Google Cloud', 'B.E. CSE — KCE (Class of 2020)'],
-    linkedInUrl: 'https://linkedin.com'
-  },
-  {
-    id: 'alum_4',
-    name: 'David Kim',
-    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=250',
-    title: 'Lead Full Stack Engineer',
-    company: 'Vercel',
-    graduationYear: 2021,
-    university: 'KCE',
-    degree: 'B.E. Computer Science & Engineering',
-    major: 'Computer Science',
-    location: 'Remote',
-    matchScore: 84,
-    matchReason: '2021 KCE Alum • Frontend & Next.js Specialist',
-    skills: ['React', 'Next.js', 'Tailwind CSS', 'Performance'],
-    bio: '2021 KCE Alum building fast web interfaces and developer tools at Vercel.',
-    availability: 'Available for Mentorship',
-    pastRoles: ['Frontend Engineer @ Figma', 'B.E. CSE — KCE (Class of 2021)'],
-    linkedInUrl: 'https://linkedin.com'
-  }
-];
+const MOCK_ALUMNI = alumniMockData;
 
 const MOCK_JOBS = [
   {
@@ -381,6 +326,39 @@ const MOCK_JOBS = [
 
 export const authApi = {
   async getSession() {
+    const token = localStorage.getItem('connected_token');
+    if (token) {
+      try {
+        const res = await fetch(`${getBackendUrl()}/api/auth/me`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && json.data) {
+            const u = json.data;
+            const roleLower = (u.role || 'STUDENT').toLowerCase();
+            const formattedUser = {
+              id: u.id,
+              name: u.name,
+              email: u.email,
+              role: roleLower,
+              avatar: u.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=250',
+              major: u.studentProfile?.major || u.alumniProfile?.major || 'Computer Science',
+              graduationYear: u.studentProfile?.graduationYear || u.alumniProfile?.graduationYear || 2026,
+              university: u.studentProfile?.university || u.alumniProfile?.university || 'KCE',
+              targetRole: u.studentProfile?.targetRole || u.alumniProfile?.currentRole || '',
+              targetCompany: u.studentProfile?.targetCompany || u.alumniProfile?.company || '',
+              currentSkills: u.studentProfile?.skills || u.alumniProfile?.skills || []
+            };
+            currentUserSession = formattedUser;
+            isAuthenticatedSession = true;
+            return { isAuthenticated: true, user: formattedUser };
+          }
+        }
+      } catch (e) {
+        console.warn("Session restore from token failed:", e);
+      }
+    }
     return {
       isAuthenticated: isAuthenticatedSession,
       user: currentUserSession
@@ -393,8 +371,40 @@ export const authApi = {
       isAuthenticatedSession = true;
       return { success: true, user: currentUserSession };
     }
-    
-    // Default fallback authentication
+
+    try {
+      const res = await fetch(`${getBackendUrl()}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+
+      const json = await res.json();
+      if (res.ok && json.success) {
+        if (json.token) {
+          localStorage.setItem('connected_token', json.token);
+        }
+        const u = json.user;
+        const roleLower = (u.role || 'STUDENT').toLowerCase();
+        currentUserSession = {
+          id: u.id,
+          name: u.name,
+          email: u.email,
+          role: roleLower,
+          avatar: u.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=250',
+          targetRole: u.targetRole || u.studentProfile?.targetRole || '',
+          targetCompany: u.targetCompany || u.studentProfile?.targetCompany || '',
+        };
+        isAuthenticatedSession = true;
+        return { success: true, user: currentUserSession };
+      } else if (json.error && json.error.message) {
+        throw new Error(json.error.message);
+      }
+    } catch (e) {
+      console.warn("Backend login failed, using fallback session:", e.message);
+    }
+
+    // Default fallback authentication if backend offline or demo user
     isAuthenticatedSession = true;
     currentUserSession = {
       ...DEMO_USERS.alex,
@@ -404,6 +414,47 @@ export const authApi = {
   },
 
   async register(userData) {
+    try {
+      const res = await fetch(`${getBackendUrl()}/api/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: userData.name,
+          email: userData.email,
+          password: userData.password,
+          role: (userData.role || 'STUDENT').toUpperCase()
+        })
+      });
+
+      const json = await res.json();
+      if (res.ok && json.success) {
+        if (json.token) {
+          localStorage.setItem('connected_token', json.token);
+        }
+        const u = json.user;
+        const roleLower = (u.role || 'STUDENT').toLowerCase();
+        currentUserSession = {
+          id: u.id,
+          name: u.name,
+          email: u.email,
+          role: roleLower,
+          avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=250',
+          major: userData.major || '',
+          graduationYear: Number(userData.graduationYear) || 2026,
+          university: userData.university || 'KCE',
+          targetRole: userData.targetRole || '',
+          targetCompany: userData.targetCompany || '',
+          currentSkills: [],
+        };
+        isAuthenticatedSession = true;
+        return { success: true, user: currentUserSession };
+      } else if (json.error && json.error.message) {
+        throw new Error(json.error.message);
+      }
+    } catch (e) {
+      console.warn("Backend registration failed:", e.message);
+    }
+
     isAuthenticatedSession = true;
     currentUserSession = {
       id: 'user_' + Date.now(),
@@ -411,41 +462,190 @@ export const authApi = {
       email: userData.email,
       role: userData.role || 'student',
       avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=250',
-      major: userData.major || 'Computer Science',
+      major: userData.major || '',
       graduationYear: Number(userData.graduationYear) || 2026,
       university: userData.university || 'KCE',
-      targetRole: userData.targetRole || 'Software Engineer',
-      targetCompany: 'Tech Corp',
-      currentSkills: ['JavaScript', 'React', 'HTML/CSS'],
+      targetRole: userData.targetRole || '',
+      targetCompany: '',
+      currentSkills: [],
+      skillsList: [],
+      skills: [],
+      daysCompleted: 0,
+      readiness: 0,
+      bio: '',
     };
     return { success: true, user: currentUserSession };
   },
 
   async logout() {
+    localStorage.removeItem('connected_token');
     isAuthenticatedSession = false;
     return { success: true };
   }
 };
 
 export const alumniApi = {
-  async getAlumni() {
-    return MOCK_ALUMNI;
+  async getAlumni(sortBy = 'impactScore') {
+    try {
+      const res = await fetch(`${getBackendUrl()}/api/alumni`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+          let list = json.data.map(item => {
+            const profile = item.alumniProfile || {};
+            return {
+              id: item.id || `alum_${Math.random()}`,
+              username: item.username,
+              name: item.name || 'Alumni Mentor',
+              avatar: item.avatarUrl || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=250',
+              title: profile.currentRole || profile.title || 'Senior Engineer',
+              company: profile.company || 'Tech Leader',
+              graduationYear: profile.graduationYear || 2019,
+              university: profile.university || 'KCE',
+              degree: profile.degree || 'B.E. Computer Science',
+              major: profile.major || 'Computer Science',
+              location: profile.location || 'San Francisco, CA',
+              matchScore: profile.matchScore || 90,
+              impactScore: profile.impactScore || 850,
+              menteesGuided: profile.menteesGuided || 18,
+              badgeTier: profile.badgeTier || 'Senior Mentor ⚡',
+              matchReason: profile.matchReason || 'Verified KCE Alum • Career Match',
+              skills: Array.isArray(profile.skills) ? profile.skills : ['Python', 'System Design', 'React'],
+              bio: profile.bio || 'Verified KCE Alum mentoring students on target career goals.',
+              availability: profile.availability || 'Available for Mentorship',
+              pastRoles: profile.pastRoles || ['Senior SWE @ Tech', 'KCE Alum'],
+              linkedInUrl: profile.linkedinUrl || 'https://linkedin.com'
+            };
+          });
+
+          const norm = s => String(s || '').replace('_', '-').toLowerCase();
+          list = list.map(item => {
+            const local = MOCK_ALUMNI.find(m => 
+              norm(m.id) === norm(item.id) || 
+              (m.name && item.name && norm(m.name) === norm(item.name))
+            );
+            if (local && local.impactScore > (item.impactScore || 0)) {
+              return { ...item, impactScore: local.impactScore, badgeTier: local.badgeTier, id: local.id, name: local.name };
+            }
+            return item;
+          });
+
+          MOCK_ALUMNI.forEach(ma => {
+            if (ma.impactScore > 950 && !list.some(l => norm(l.id) === norm(ma.id) || norm(l.name) === norm(ma.name))) {
+              list.push(ma);
+            }
+          });
+
+          if (sortBy === 'impactScore') {
+            list.sort((a, b) => (b.impactScore || 0) - (a.impactScore || 0));
+          } else if (sortBy === 'matchScore') {
+            list.sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0));
+          }
+          return list;
+        }
+      }
+    } catch (e) {
+      console.warn("DB Alumni fetch failed, using fallback:", e);
+    }
+
+    const list = [...MOCK_ALUMNI];
+    if (sortBy === 'impactScore') {
+      list.sort((a, b) => (b.impactScore || 0) - (a.impactScore || 0));
+    } else if (sortBy === 'matchScore') {
+      list.sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0));
+    }
+    return list;
   },
+
   async getAlumniById(id) {
-    return MOCK_ALUMNI.find(a => a.id === id) || MOCK_ALUMNI[0];
+    const norm = s => String(s || '').replace('_', '-');
+    return MOCK_ALUMNI.find(a => norm(a.id) === norm(id)) || MOCK_ALUMNI[0];
+  },
+
+  async incrementImpactScore(alumniId, points = 50) {
+    const norm = s => String(s || '').replace('_', '-');
+    const alum = MOCK_ALUMNI.find(a => norm(a.id) === norm(alumniId));
+    if (alum) {
+      alum.impactScore = (alum.impactScore || 700) + points;
+      alum.menteesGuided = (alum.menteesGuided || 10) + 1;
+      if (alum.impactScore > 950) alum.badgeTier = '#1 Top Mentor 🔥';
+      else if (alum.impactScore > 900) alum.badgeTier = 'Master Mentor ⭐';
+      else if (alum.impactScore > 800) alum.badgeTier = 'Senior Mentor ⚡';
+    }
+    return alum;
   }
 };
 
 export const userApi = {
   async getCurrentUser() {
-    const goalData = CAREER_GOALS[currentGoalKey];
+    if (currentUserSession?.id) {
+      try {
+        const isAlumni = currentUserSession.role === 'alumni' || currentUserSession.role === 'ALUMNI';
+        const endpoint = isAlumni 
+          ? `${getBackendUrl()}/api/alumni/${currentUserSession.id}`
+          : `${getBackendUrl()}/api/students/${currentUserSession.id}`;
+        
+        const res = await fetch(endpoint);
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && json.data) {
+            const dbUser = json.data;
+            const prof = dbUser.studentProfile || dbUser.alumniProfile || {};
+            
+            currentUserSession = {
+              ...currentUserSession,
+              name: dbUser.name || currentUserSession.name,
+              avatar: dbUser.avatarUrl || currentUserSession.avatar,
+              avatarUrl: dbUser.avatarUrl || currentUserSession.avatarUrl || currentUserSession.avatar,
+              bio: prof.bio !== undefined && prof.bio !== '' ? prof.bio : currentUserSession.bio,
+              major: prof.major || currentUserSession.major,
+              graduationYear: prof.graduationYear || currentUserSession.graduationYear,
+              company: prof.company || currentUserSession.company,
+              title: prof.role || currentUserSession.title,
+              customTargetRole: prof.targetRole || currentUserSession.customTargetRole || currentUserSession.targetRole,
+              customTargetCompany: prof.targetCompany || currentUserSession.customTargetCompany || currentUserSession.targetCompany,
+              gpa: prof.gpa || currentUserSession.gpa,
+              githubUrl: prof.githubUrl || currentUserSession.githubUrl,
+              linkedinUrl: prof.linkedinUrl || currentUserSession.linkedinUrl,
+              skillsList: Array.isArray(prof.skills) && prof.skills.length > 0 ? prof.skills : currentUserSession.skillsList,
+              skills: Array.isArray(prof.skills) && prof.skills.length > 0 ? prof.skills : currentUserSession.skills,
+              isMentor: prof.isMentor !== undefined ? prof.isMentor : currentUserSession.isMentor,
+              mentorBio: prof.mentorBio || currentUserSession.mentorBio,
+              maxMentees: prof.maxMentees || currentUserSession.maxMentees,
+            };
+          }
+        }
+      } catch (e) {
+        // Silently preserve session state if DB offline
+      }
+    }
+
+    const isDemoAlex = currentUserSession?.id === 'user_101' || currentUserSession?.email === 'alex.johnson@kce.edu';
+    
+    if (isDemoAlex) {
+      const goalData = CAREER_GOALS[currentGoalKey] || CAREER_GOALS['AI / ML Engineer'];
+      return {
+        ...currentUserSession,
+        targetRole: currentUserSession.customTargetRole || currentUserSession.targetRole || goalData.targetRole,
+        targetCompany: currentUserSession.customTargetCompany || currentUserSession.targetCompany || goalData.targetCompany,
+        targetDays: 100,
+        daysCompleted: 36,
+        readiness: 64,
+        nextAction: goalData.nextAction,
+        skills: currentUserSession.skillsList || goalData.skills,
+        currentGoalKey: currentGoalKey
+      };
+    }
+
     return {
       ...currentUserSession,
-      targetRole: goalData.targetRole,
-      targetCompany: goalData.targetCompany,
-      readiness: goalData.readiness,
-      nextAction: goalData.nextAction,
-      skills: goalData.skills,
+      targetRole: currentUserSession.customTargetRole || currentUserSession.targetRole || '',
+      targetCompany: currentUserSession.customTargetCompany || currentUserSession.targetCompany || '',
+      targetDays: 100,
+      daysCompleted: currentUserSession.daysCompleted || 0,
+      readiness: currentUserSession.customReadiness || currentUserSession.readiness || 0,
+      nextAction: currentUserSession.customNextAction || currentUserSession.nextAction || 'Set up your target career goal to begin benchmarking',
+      skills: currentUserSession.skillsList || currentUserSession.skills || [],
       currentGoalKey: currentGoalKey
     };
   },
@@ -453,9 +653,101 @@ export const userApi = {
   async updateCareerGoal(goalKey) {
     if (CAREER_GOALS[goalKey]) {
       currentGoalKey = goalKey;
+      delete currentUserSession.customTargetRole;
+      delete currentUserSession.customTargetCompany;
+      const goal = CAREER_GOALS[goalKey];
+      currentUserSession.targetRole = goal.targetRole;
+      currentUserSession.targetCompany = goal.targetCompany;
+
+      if (currentUserSession?.id) {
+        try {
+          const isAlumni = currentUserSession.role === 'alumni' || currentUserSession.role === 'ALUMNI';
+          const endpoint = isAlumni
+            ? `${getBackendUrl()}/api/alumni/${currentUserSession.id}`
+            : `${getBackendUrl()}/api/students/${currentUserSession.id}`;
+          await fetch(endpoint, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              targetRole: goal.targetRole,
+              targetCompany: goal.targetCompany
+            })
+          });
+        } catch (e) {
+          // Fallback
+        }
+      }
     }
     return this.getCurrentUser();
   },
+
+  async updateProfile(profileData) {
+    try {
+      const isAlumni = currentUserSession.role === 'alumni' || currentUserSession.role === 'ALUMNI';
+      const endpoint = isAlumni
+        ? `${getBackendUrl()}/api/alumni/${currentUserSession.id}`
+        : `${getBackendUrl()}/api/students/${currentUserSession.id}`;
+
+      const res = await fetch(endpoint, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(profileData)
+      });
+
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.data) {
+          const dbUser = json.data;
+          const profile = dbUser.studentProfile || dbUser.alumniProfile || {};
+          
+          currentUserSession = {
+            ...currentUserSession,
+            ...profileData,
+            name: profileData.name || dbUser.name || currentUserSession.name,
+            avatar: profileData.avatarUrl || dbUser.avatarUrl || currentUserSession.avatar,
+            avatarUrl: profileData.avatarUrl || dbUser.avatarUrl || currentUserSession.avatar,
+            bio: profileData.bio !== undefined ? profileData.bio : (profile.bio || currentUserSession.bio),
+            headline: profileData.headline || currentUserSession.headline,
+            specialization: profileData.specialization || currentUserSession.specialization,
+            major: profileData.major || profile.major || currentUserSession.major,
+            company: profileData.company || profile.company || currentUserSession.company,
+            title: profileData.role || profile.role || currentUserSession.title,
+            customTargetRole: profileData.targetRole || profile.targetRole || currentUserSession.targetRole,
+            customTargetCompany: profileData.targetCompany || currentUserSession.targetCompany,
+            graduationYear: profileData.graduationYear || profile.graduationYear || currentUserSession.graduationYear,
+            gpa: profileData.gpa || profile.gpa || currentUserSession.gpa,
+            yearsOfExperience: profileData.yearsOfExperience || profile.yearsOfExperience || currentUserSession.yearsOfExperience,
+            skillsList: profileData.skills || profile.skills || currentUserSession.skillsList,
+            skills: profileData.skills || profile.skills || currentUserSession.skills,
+            githubUrl: profileData.githubUrl || profile.githubUrl || currentUserSession.githubUrl,
+            linkedinUrl: profileData.linkedinUrl || profile.linkedinUrl || currentUserSession.linkedinUrl,
+            portfolioUrl: profileData.portfolioUrl || currentUserSession.portfolioUrl,
+            isMentor: profileData.isMentor !== undefined ? profileData.isMentor : profile.isMentor,
+            mentorBio: profileData.mentorBio || profile.mentorBio || currentUserSession.mentorBio,
+            maxMentees: profileData.maxMentees || profile.maxMentees || currentUserSession.maxMentees,
+          };
+          return { success: true, user: await this.getCurrentUser() };
+        }
+      }
+    } catch (e) {
+      console.warn("DB Profile update failed, updating local state:", e);
+    }
+
+    currentUserSession = {
+      ...currentUserSession,
+      ...profileData,
+      name: profileData.name || currentUserSession.name,
+      avatar: profileData.avatarUrl || currentUserSession.avatar,
+      avatarUrl: profileData.avatarUrl || currentUserSession.avatar,
+      title: profileData.role || currentUserSession.title,
+      customTargetRole: profileData.targetRole || currentUserSession.targetRole,
+      customTargetCompany: profileData.targetCompany || currentUserSession.targetCompany,
+      skillsList: profileData.skills || currentUserSession.skillsList,
+      skills: profileData.skills || currentUserSession.skills
+    };
+    return { success: true, user: await this.getCurrentUser() };
+  },
+
 
   async getSkillGaps() {
     return CAREER_GOALS[currentGoalKey].skills;
@@ -466,11 +758,157 @@ export const userApi = {
   }
 };
 
+function getBackendUrl() {
+  const host = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+  return `http://${host}:5000`;
+}
+
+function getAIUrl() {
+  const host = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+  return `http://${host}:8000`;
+}
+
 export const roadmapApi = {
-  async getRoadmap() {
-    return CAREER_GOALS[currentGoalKey].roadmap;
+  async getRoadmap(studentId = 'student1') {
+    try {
+      const res = await fetch(`${getBackendUrl()}/api/career/roadmap/${studentId}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.data && data.data.roadmapData) {
+          return data.data.roadmapData;
+        }
+      }
+    } catch (e) {
+      console.warn("DB Roadmap fetch failed, using fallback:", e);
+    }
+    return CAREER_GOALS[currentGoalKey]?.roadmap || CAREER_GOALS['AI / ML Engineer'].roadmap;
+  },
+
+  async saveRoadmap({ studentId = 'student1', targetRole, roadmapData, skillsToAcquire = [] }) {
+    try {
+      const res = await fetch(`${getBackendUrl()}/api/career/roadmap`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          studentId,
+          targetRole: targetRole || 'Software Engineer',
+          roadmapData,
+          skillsToAcquire
+        })
+      });
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch (e) {
+      console.error("Save roadmap error:", e);
+    }
+    return { success: false };
+  },
+
+  async generateAIRoadmap({ targetRole, currentSkills = [], studentName = 'Aarav Sharma', bio = '', timelineWeeks = 12 }) {
+    try {
+      const aiRes = await fetch(`${getAIUrl()}/api/ai/generate-roadmap`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          studentName,
+          targetRole,
+          currentSkills,
+          bio,
+          timelineWeeks
+        })
+      });
+      if (aiRes.ok) {
+        const aiData = await aiRes.json();
+        await this.saveRoadmap({
+          studentId: 'student1',
+          targetRole,
+          roadmapData: aiData,
+          skillsToAcquire: aiData.skillGapAnalysis?.missingSkills || []
+        });
+        return aiData;
+      }
+    } catch (e) {
+      console.warn("FastAPI AI Roadmap generator offline, using fallback:", e);
+    }
+
+    const fallbackData = {
+      studentName,
+      targetRole,
+      targetCompany: 'Top Tech Industry',
+      skillGapAnalysis: {
+        possessedSkills: currentSkills.length > 0 ? currentSkills : ['JavaScript', 'React', 'Git'],
+        missingSkills: ['System Design', 'Docker & CI/CD', 'Cloud Infrastructure', 'Microservices Security'],
+        readinessScore: 68,
+        analysisSummary: `Solid foundation in ${currentSkills.join(', ') || 'software development'}. To become a ${targetRole}, focus on containerization, cloud infrastructure, and system design.`
+      },
+      phases: [
+        {
+          phaseNumber: 1,
+          title: 'Core Fundamentals & Prerequisite Tools',
+          duration: 'Weeks 1-3',
+          description: `Strengthen core prerequisites, data structures, and Linux administration for ${targetRole}.`,
+          skillsToLearn: ['Data Structures & Algorithms', 'Linux CLI', 'Git Flow'],
+          keyProjects: ['Automated Build & Testing Suite'],
+          recommendedTopics: ['Async Architecture', 'Git Branching Strategies', 'Clean Code Principles'],
+          tasks: [
+            { id: 'p1_1', text: 'Complete Data Structures & Algorithms Benchmark', done: true },
+            { id: 'p1_2', text: 'Configure Linux & Git Workflow Pipeline', done: true }
+          ]
+        },
+        {
+          phaseNumber: 2,
+          title: `Core ${targetRole} Stack Mastery`,
+          duration: 'Weeks 4-6',
+          description: 'Master core backend/frontend frameworks, database query tuning, and containerization.',
+          skillsToLearn: ['Docker', 'PostgreSQL Query Tuning', 'REST & GraphQL APIs'],
+          keyProjects: ['Containerized Multi-Service Web Application'],
+          recommendedTopics: ['Database Indexing', 'API Authentication & JWT', 'Docker Compose'],
+          tasks: [
+            { id: 'p2_1', text: 'Build Production RESTful API with Auth', done: false },
+            { id: 'p2_2', text: 'Containerize Application with Docker Compose', done: false }
+          ]
+        },
+        {
+          phaseNumber: 3,
+          title: 'Cloud Infrastructure & Hands-On Portfolio Build',
+          duration: 'Weeks 7-9',
+          description: 'Build a production-grade portfolio application deployed on cloud infrastructure with CI/CD.',
+          skillsToLearn: ['AWS EC2 / S3', 'GitHub Actions CI/CD', 'Prometheus & Grafana'],
+          keyProjects: [`Production-Grade ${targetRole} Portfolio Project`],
+          recommendedTopics: ['Cloud Hosting', 'Continuous Delivery', 'System Monitoring & Logging'],
+          tasks: [
+            { id: 'p3_1', text: 'Deploy Application Stack to AWS Cloud', done: false },
+            { id: 'p3_2', text: 'Implement Automated GitHub Actions CI/CD Pipeline', done: false }
+          ]
+        },
+        {
+          phaseNumber: 4,
+          title: 'System Design, Portfolio Review & Interview Loop',
+          duration: 'Weeks 10-12',
+          description: 'Prepare for technical interview loops, system design sessions, and resume review with mentors.',
+          skillsToLearn: ['System Design', 'Scalability & Caching', 'Mock Interviews'],
+          keyProjects: ['Interactive Live Demo & Technical Documentation'],
+          recommendedTopics: ['Redis Distributed Caching', 'Load Balancing', 'Alumni Mock Interview'],
+          tasks: [
+            { id: 'p4_1', text: 'Complete Mock System Design Interview Loop', done: false },
+            { id: 'p4_2', text: 'Conduct Portfolio Review & Referral Chat with Alumni Mentor', done: false }
+          ]
+        }
+      ]
+    };
+
+    await this.saveRoadmap({
+      studentId: 'student1',
+      targetRole,
+      roadmapData: fallbackData,
+      skillsToAcquire: fallbackData.skillGapAnalysis.missingSkills
+    });
+
+    return fallbackData;
   }
 };
+
 
 export const jobApi = {
   async getJobs() {
@@ -478,22 +916,118 @@ export const jobApi = {
   }
 };
 
+function smartNLPParser(prompt, customUserGoal = null) {
+  const lower = prompt.toLowerCase();
+  const userGoal = customUserGoal || CAREER_GOALS[currentGoalKey];
+
+  const knownSkills = [
+    'java', 'spring boot', 'python', 'react', 'node', 'c++', 'aws', 'docker', 
+    'ai', 'machine learning', 'system design', 'data', 'testing', 'embedded', 
+    'fastapi', 'sql', 'devops', 'cybersecurity', 'android', 'kotlin', 'microservices', 'frontend'
+  ];
+  const matchedSkills = knownSkills.filter(s => lower.includes(s));
+
+  const knownCompanies = [
+    'google', 'bosch', 'purple slate', 'tata', 'capgemini', 'pwc', 'razorpay', 
+    'zoho', 'stripe', 'meta', 'vercel', 'openai', 'ultramain', 'cognizant', 'mindtree'
+  ];
+  const matchedCompanies = knownCompanies.filter(c => lower.includes(c));
+
+  let matches = MOCK_ALUMNI.filter(alum => {
+    const alumSkills = (alum.skills || []).map(s => s.toLowerCase());
+    const alumRole = (alum.role || alum.title || '').toLowerCase();
+    const alumBio = (alum.bio || '').toLowerCase();
+    const alumCompany = (alum.company || '').toLowerCase();
+
+    const skillMatch = matchedSkills.some(ms => alumSkills.some(as => as.includes(ms)) || alumRole.includes(ms) || alumBio.includes(ms));
+    const companyMatch = matchedCompanies.some(mc => alumCompany.includes(mc));
+
+    if (matchedSkills.length > 0 && matchedCompanies.length > 0) {
+      return skillMatch && companyMatch;
+    }
+    return skillMatch || companyMatch;
+  });
+
+  if (matches.length === 0) {
+    matches = MOCK_ALUMNI.slice(0, 3);
+  }
+
+  const skillText = matchedSkills.length > 0 ? matchedSkills.map(s => s.toUpperCase()).join(', ') : '';
+  const companyText = matchedCompanies.length > 0 ? matchedCompanies.map(c => c.toUpperCase()).join(', ') : '';
+
+  let headerText = '';
+  if (skillText && companyText) {
+    headerText = `I searched our alumni network for ${skillText} specialists at ${companyText} and found ${matches.length} matching mentors:`;
+  } else if (skillText) {
+    headerText = `I analyzed our verified alumni database for ${skillText} professionals and found ${matches.length} matching alumni:`;
+  } else if (companyText) {
+    headerText = `Here are verified alumni mentors at ${companyText}:`;
+  } else {
+    const targetText = userGoal?.targetRole && userGoal?.targetCompany 
+      ? `${userGoal.targetRole} at ${userGoal.targetCompany}` 
+      : 'your target career goals';
+    headerText = `Based on your profile targeting ${targetText}, here are the top recommended alumni mentors:`;
+  }
+
+  const formattedAlumni = matches.slice(0, 5).map(a => ({
+    ...a,
+    matchReason: a.matchReason || `Expertise in ${(a.skills || []).join(', ')} aligns with your career target as ${a.title} @ ${a.company}.`
+  }));
+
+  const itemizedText = formattedAlumni.map((a, idx) => {
+    return `**${idx + 1}. ${a.name}** (${a.title} @ ${a.company})\n💡 *Why Perfect Match:* ${a.matchReason}`;
+  }).join('\n\n');
+
+  return {
+    text: `${headerText}\n\n${itemizedText}`,
+    suggestedAlumni: formattedAlumni
+  };
+}
+
 export const aiAssistantApi = {
   async sendMessage(prompt) {
-    const lower = prompt.toLowerCase();
-    let responseText = "Based on your career target, I recommend focusing on your largest skill gap in System Design.";
+    const currentUser = await userApi.getCurrentUser();
+    const userGoal = {
+      studentName: currentUser.name || 'Student',
+      targetRole: currentUser.targetRole || 'Software Engineer',
+      targetCompany: currentUser.targetCompany || 'Tech Enterprise',
+      readiness: currentUser.readiness || 75,
+      currentSkills: currentUser.skillsList || (Array.isArray(currentUser.skills) ? currentUser.skills : [])
+    };
+    
+    try {
+      const res = await fetch(`${getBackendUrl()}/api/ai/copilot`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt,
+          userGoal,
+          currentSkills: userGoal.currentSkills
+        })
+      });
 
-    if (lower.includes('referral') || lower.includes('outreach')) {
-      responseText = "Here is a personalized referral note for Priya Sharma at Google:\n\n'Hi Priya, I'm Alex, a CS Senior at KCE aiming for a Senior AI Engineer role. I noticed your work on Cloud systems and would appreciate your advice on transitioning to production engineering.'";
-    } else if (lower.includes('gap') || lower.includes('skill')) {
-      const gap = CAREER_GOALS[currentGoalKey].biggestGap;
-      responseText = `Your largest skill gap is ${gap.skill} (Gap: ${gap.gap}%). I recommend starting the ${gap.resource} module.`;
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.text) {
+          return {
+            id: 'msg_' + Date.now(),
+            sender: 'assistant',
+            text: json.text,
+            suggestedAlumni: json.suggestedAlumni || MOCK_ALUMNI.slice(0, 8),
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          };
+        }
+      }
+    } catch (e) {
+      console.warn("Backend AI route unavailable, using smart NLP parser:", e);
     }
 
+    const fallback = smartNLPParser(prompt, userGoal);
     return {
       id: 'msg_' + Date.now(),
       sender: 'assistant',
-      text: responseText,
+      text: fallback.text,
+      suggestedAlumni: fallback.suggestedAlumni,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
   }

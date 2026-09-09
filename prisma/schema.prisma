@@ -50,6 +50,8 @@ model StudentProfile {
   graduationYear Int?
   bio            String?
   targetRole     String?
+  targetCompany  String?  @default("Google DeepMind")
+  targetDays     Int      @default(100)
   skills         String[] @default([])
   gpa            Float?
   githubUrl      String?
@@ -69,12 +71,21 @@ model AlumniProfile {
   role              String?
   graduationYear    Int?
   yearsOfExperience Int?     @default(0)
+  major             String?
+  degree            String?
+  location          String?
   bio               String?
   skills            String[] @default([])
-  isMentor          Boolean  @default(false)
+  isMentor          Boolean  @default(true)
   mentorBio         String?
-  maxMentees        Int      @default(3)
+  maxMentees        Int      @default(5)
   linkedinUrl       String?
+  availability      String?  @default("Available for Mentorship")
+  impactScore       Int?     @default(850)
+  menteesGuided     Int?     @default(10)
+  badgeTier         String?  @default("Verified Alum ✨")
+  matchScore        Int?     @default(85)
+  matchReason       String?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 

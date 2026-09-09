@@ -1,18 +1,59 @@
 import { config } from '../config.js';
 
 /**
- * Call Gemini API using native fetch with structured JSON response.
- * Fallback to keyword matching if API key is missing or offline.
- * 
- * @param {string} prompt - Prompt instruction for Gemini
- * @param {Object} jsonSchema - Expected Zod schema or JSON format description
- * @returns {Promise<Object>} Parsed JSON object from model response
+ * Attempt to query local Ollama instance running Qwen 2.5 3B at http://localhost:11434.
+ */
+async function tryOllamaGenerate(prompt, schema) {
+  try {
+    const host = config.ollamaHost || 'http://localhost:11434';
+    const model = config.ollamaModel || 'qwen2.5:3b';
+
+    const response = await fetch(`${host}/api/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: model,
+        prompt: prompt,
+        format: 'json',
+        stream: false,
+        options: {
+          temperature: 0.2
+        }
+      }),
+      signal: AbortSignal.timeout(12000)
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      if (data.response) {
+        const parsedData = JSON.parse(data.response);
+        console.log(`[AI Engine] Successfully generated RAG response via Local Ollama (${model}) 🚀`);
+        if (schema && typeof schema.parse === 'function') {
+          return schema.parse(parsedData);
+        }
+        return parsedData;
+      }
+    }
+  } catch (e) {
+    // Ollama server offline or model loading timeout
+  }
+  return null;
+}
+
+/**
+ * Call Local Ollama (Qwen 2.5 3B) or Gemini API with structured JSON response.
  */
 export async function generateStructuredJson(prompt, schema) {
-  const apiKey = config.geminiApiKey;
+  // 1. Try Local Ollama Qwen 2.5 3B if enabled
+  if (config.preferOllama) {
+    const ollamaResult = await tryOllamaGenerate(prompt, schema);
+    if (ollamaResult) return ollamaResult;
+  }
 
+  // 2. Try Gemini Cloud API if configured
+  const apiKey = config.geminiApiKey;
   if (!apiKey) {
-    console.warn('[AI Engine] GEMINI_API_KEY is not set in environment. Operating in offline fallback mode.');
+    console.warn('[AI Engine] Operating in local offline vector fallback mode.');
     return null;
   }
 
@@ -20,11 +61,7 @@ export async function generateStructuredJson(prompt, schema) {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${config.modelName}:generateContent?key=${apiKey}`;
     
     const requestBody = {
-      contents: [
-        {
-          parts: [{ text: prompt }]
-        }
-      ],
+      contents: [{ parts: [{ text: prompt }] }],
       generationConfig: {
         responseMimeType: "application/json",
         temperature: 0.2
@@ -33,9 +70,7 @@ export async function generateStructuredJson(prompt, schema) {
 
     const response = await fetch(url, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(requestBody)
     });
 
@@ -49,13 +84,11 @@ export async function generateStructuredJson(prompt, schema) {
     const candidateText = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
     if (!candidateText) {
-      console.warn('[AI Engine] Empty text response received from Gemini.');
       return null;
     }
 
     const parsedData = JSON.parse(candidateText);
 
-    // Validate with Zod schema if provided
     if (schema && typeof schema.parse === 'function') {
       return schema.parse(parsedData);
     }

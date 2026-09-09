@@ -15,7 +15,8 @@ export function validateBody(schema) {
 export function validateQuery(schema) {
   return (req, res, next) => {
     try {
-      req.query = schema.parse(req.query);
+      const parsed = schema.parse(req.query);
+      Object.assign(req.query, parsed);
       next();
     } catch (err) {
       next(err);

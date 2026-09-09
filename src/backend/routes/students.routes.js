@@ -3,6 +3,7 @@ import {
   getStudents,
   getStudentById,
   createStudent,
+  updateStudent,
   studentCreateSchema,
   studentQuerySchema,
 } from '../controllers/students.controller.js';
@@ -13,5 +14,7 @@ const router = express.Router();
 router.get('/', validateQuery(studentQuerySchema), getStudents);
 router.get('/:id', getStudentById);
 router.post('/', validateBody(studentCreateSchema), createStudent);
+router.put('/:id', updateStudent);
+router.put('/', updateStudent);
 
 export default router;

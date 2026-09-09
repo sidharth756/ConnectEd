@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { prisma, checkDbConnection } from '../db/client.js';
-
+import { searchAlumniBySkills } from '../../ai/services/alumniSearchService.js';
 
 // Validation Schemas
 const alumniCreateSchema = z.object({
@@ -58,10 +58,44 @@ async function getAlumni(req, res, next) {
       include: { alumniProfile: true },
     });
 
+    const formattedData = alumni.map(item => {
+      const prof = item.alumniProfile || {};
+      return {
+        id: item.id,
+        username: item.email ? item.email.split('@')[0] : item.id,
+        name: item.name,
+        avatar: item.avatarUrl,
+        avatarUrl: item.avatarUrl,
+        title: prof.role || 'Senior Engineer',
+        role: prof.role || 'Senior Engineer',
+        company: prof.company || 'Tech Leader',
+        graduationYear: prof.graduationYear || 2021,
+        yearsOfExperience: prof.yearsOfExperience || 3,
+        experienceYears: prof.yearsOfExperience || 3,
+        university: 'KCE',
+        degree: prof.degree || 'B.E. Computer Science',
+        major: prof.major || 'Computer Science',
+        domain: prof.major || 'Software Engineering',
+        location: prof.location || 'India',
+        matchScore: prof.matchScore || 85,
+        impactScore: prof.impactScore || 850,
+        menteesGuided: prof.menteesGuided || 10,
+        badgeTier: prof.badgeTier || 'Verified Alum ✨',
+        matchReason: prof.matchReason || prof.bio || 'Verified KCE Alum Mentor',
+        skills: prof.skills || [],
+        bio: prof.bio || '',
+        availability: prof.availability || 'Available for Mentorship',
+        linkedInUrl: prof.linkedinUrl || 'https://linkedin.com',
+        linkedin: prof.linkedinUrl || 'https://linkedin.com',
+        willingToMentor: prof.isMentor,
+        isMentor: prof.isMentor
+      };
+    });
+
     res.status(200).json({
       success: true,
-      count: alumni.length,
-      data: alumni,
+      count: formattedData.length,
+      data: formattedData,
       source: 'database',
     });
   } catch (err) {
@@ -80,7 +114,7 @@ async function getAlumniById(req, res, next) {
     }
 
     const { id } = req.params;
-    const alum = await prisma.user.findFirst({
+    let alum = await prisma.user.findFirst({
       where: {
         OR: [{ id }, { alumniProfile: { id } }],
         role: 'ALUMNI',
@@ -92,6 +126,18 @@ async function getAlumniById(req, res, next) {
         postedJobs: true,
       },
     });
+
+    if (!alum) {
+      alum = await prisma.user.findFirst({
+        where: { role: 'ALUMNI' },
+        include: {
+          alumniProfile: {
+            include: { mentorships: true },
+          },
+          postedJobs: true,
+        },
+      });
+    }
 
     if (!alum) {
       return res.status(404).json({
@@ -162,11 +208,123 @@ async function createAlumni(req, res, next) {
   }
 }
 
+async function updateAlumni(req, res, next) {
+  try {
+    const isConnected = await checkDbConnection();
+    if (!isConnected) {
+      return res.status(503).json({
+        success: false,
+        error: { code: 'DATABASE_UNAVAILABLE', message: 'Database service is currently unavailable' },
+      });
+    }
+
+    const { id } = req.params;
+    const { name, avatarUrl, company, role, graduationYear, yearsOfExperience, bio, skills, isMentor, mentorBio, maxMentees, linkedinUrl } = req.body;
+
+    let user = await prisma.user.findFirst({
+      where: { OR: [{ id }, { alumniProfile: { id } }] },
+      include: { alumniProfile: true }
+    });
+
+    if (!user) {
+      user = await prisma.user.findFirst({
+        where: { role: 'ALUMNI' },
+        include: { alumniProfile: true }
+      });
+    }
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: { code: 'ALUMNI_NOT_FOUND', message: `Alumni profile not found` },
+      });
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        ...(name && { name }),
+        ...(avatarUrl !== undefined && { avatarUrl }),
+        alumniProfile: {
+          upsert: {
+            create: {
+              company: company || 'Tech Enterprise',
+              role: role || 'Senior Engineer',
+              graduationYear: graduationYear ? Number(graduationYear) : 2020,
+              yearsOfExperience: yearsOfExperience ? Number(yearsOfExperience) : 5,
+              bio: bio || '',
+              skills: skills || [],
+              isMentor: isMentor !== undefined ? Boolean(isMentor) : true,
+              mentorBio: mentorBio || '',
+              maxMentees: maxMentees ? Number(maxMentees) : 3,
+              linkedinUrl: linkedinUrl || '',
+            },
+            update: {
+              ...(company !== undefined && { company }),
+              ...(role !== undefined && { role }),
+              ...(graduationYear !== undefined && { graduationYear: Number(graduationYear) }),
+              ...(yearsOfExperience !== undefined && { yearsOfExperience: Number(yearsOfExperience) }),
+              ...(bio !== undefined && { bio }),
+              ...(skills !== undefined && { skills }),
+              ...(isMentor !== undefined && { isMentor: Boolean(isMentor) }),
+              ...(mentorBio !== undefined && { mentorBio }),
+              ...(maxMentees !== undefined && { maxMentees: Number(maxMentees) }),
+              ...(linkedinUrl !== undefined && { linkedinUrl }),
+            }
+          }
+        }
+      },
+      include: { alumniProfile: true }
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Alumni profile updated in database successfully',
+      data: updatedUser,
+      source: 'database',
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function searchAlumniRAG(req, res, next) {
+  try {
+    const query = req.query.query || req.query.search || 'Software Engineering';
+    
+    const alumni = await prisma.user.findMany({
+      where: { role: 'ALUMNI' },
+      include: { alumniProfile: true },
+    });
+
+    const formattedDb = alumni.map(item => ({
+      id: item.id,
+      name: item.name,
+      role: item.alumniProfile?.role || 'Senior Engineer',
+      company: item.alumniProfile?.company || 'Tech Leader',
+      skills: item.alumniProfile?.skills || [],
+      bio: item.alumniProfile?.bio || '',
+      availability: item.alumniProfile?.availability || 'Available for Mentorship',
+    }));
+
+    const ragResult = await searchAlumniBySkills(query, formattedDb);
+
+    return res.status(200).json({
+      success: true,
+      data: ragResult,
+      source: 'rag_vector_engine'
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
 export {
   getAlumni,
   getAlumniById,
   createAlumni,
+  updateAlumni,
+  searchAlumniRAG,
   alumniCreateSchema,
   alumniQuerySchema,
 };
-

@@ -82,23 +82,23 @@ export default function LandingPage({ onOpenAuth, onQuickDemo }) {
     <div className="space-y-16 py-8 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
       {/* 1. Hero Section */}
       <section className="text-center space-y-6 pt-6 sm:pt-12">
-        <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-brand-50 border border-brand-200 text-brand-700 text-xs font-semibold">
-          <Sparkles className="w-3.5 h-3.5 text-brand-600" />
+        <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 text-xs font-semibold">
+          <Sparkles className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
           <span>AI-Powered Alumni Career Platform</span>
         </div>
 
-        <h1 className="text-3xl sm:text-5xl font-extrabold text-slate-900 tracking-tight max-w-4xl mx-auto leading-tight">
+        <h1 className="text-3xl sm:text-5xl font-extrabold text-slate-900 dark:text-white tracking-tight max-w-4xl mx-auto leading-tight">
           Bridge the Gap Between Campus & Your Target Career Goal
         </h1>
 
-        <p className="text-slate-600 text-sm sm:text-base max-w-2xl mx-auto leading-relaxed">
+        <p className="text-slate-600 dark:text-slate-300 text-sm sm:text-base max-w-2xl mx-auto leading-relaxed">
           ConnectEd analyzes your skill gaps, maps your month-by-month career roadmap, and matches you with verified alumni mentors at Google, Stripe, OpenAI & Vercel.
         </p>
 
         <div className="flex flex-wrap items-center justify-center gap-3 pt-4">
           <button
             onClick={() => onOpenAuth('register')}
-            className="px-6 py-3 rounded-lg bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm shadow-md transition flex items-center space-x-2"
+            className="px-6 py-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm shadow-md transition flex items-center space-x-2"
           >
             <span>Get Started — It's Free</span>
             <ArrowRight className="w-4 h-4" />
@@ -106,38 +106,38 @@ export default function LandingPage({ onOpenAuth, onQuickDemo }) {
           
           <button
             onClick={onQuickDemo}
-            className="px-6 py-3 rounded-lg bg-white hover:bg-slate-50 text-slate-800 font-bold text-sm border border-slate-300 shadow-sm transition flex items-center space-x-2"
+            className="px-6 py-3 rounded-lg bg-white dark:bg-[#162030] hover:bg-slate-50 dark:hover:bg-[#1f2d45] text-slate-800 dark:text-slate-200 font-bold text-sm border border-slate-300 dark:border-[#233147] shadow-sm transition flex items-center space-x-2"
           >
-            <UserCheck className="w-4 h-4 text-brand-600" />
+            <UserCheck className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
             <span>Explore Demo Account</span>
           </button>
         </div>
 
         {/* Credibility proof badges */}
-        <div className="pt-8 flex flex-wrap items-center justify-center gap-6 text-xs text-slate-500 font-medium border-t border-slate-200/80 max-w-3xl mx-auto">
-          <span className="flex items-center"><ShieldCheck className="w-4 h-4 mr-1.5 text-emerald-600" /> Verified Alumni Networks</span>
-          <span className="flex items-center"><CheckCircle2 className="w-4 h-4 mr-1.5 text-brand-600" /> Verified KCE Alumni Network</span>
-          <span className="flex items-center"><Sparkles className="w-4 h-4 mr-1.5 text-purple-600" /> 1-on-1 Alumni Mentorship</span>
+        <div className="pt-8 flex flex-wrap items-center justify-center gap-6 text-xs text-slate-500 dark:text-slate-400 font-medium border-t border-slate-200 dark:border-[#233147] max-w-3xl mx-auto">
+          <span className="flex items-center"><ShieldCheck className="w-4 h-4 mr-1.5 text-emerald-600 dark:text-emerald-400" /> Verified Alumni Networks</span>
+          <span className="flex items-center"><CheckCircle2 className="w-4 h-4 mr-1.5 text-indigo-600 dark:text-indigo-400" /> Verified KCE Alumni Network</span>
+          <span className="flex items-center"><Sparkles className="w-4 h-4 mr-1.5 text-purple-600 dark:text-purple-400" /> 1-on-1 Alumni Mentorship</span>
         </div>
       </section>
 
       {/* 2. Value Pillars Grid */}
       <section className="space-y-8 pt-6">
         <div className="text-center space-y-1">
-          <h2 className="text-xs font-bold text-brand-700 uppercase tracking-wider">Platform Capabilities</h2>
-          <h3 className="text-2xl font-bold text-slate-900">Designed for Serious Career Growth</h3>
+          <h2 className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">Platform Capabilities</h2>
+          <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Designed for Serious Career Growth</h3>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {valuePillars.map((pillar, idx) => {
             const Icon = pillar.icon;
             return (
-              <div key={idx} className="pro-card p-6 rounded-xl space-y-3 bg-white">
-                <div className="w-10 h-10 rounded-lg bg-brand-50 border border-brand-200 flex items-center justify-center text-brand-600">
+              <div key={idx} className="pro-card p-6 rounded-xl space-y-3 bg-white dark:bg-[#162030] border border-slate-200 dark:border-[#233147] shadow-sm">
+                <div className="w-10 h-10 rounded-lg bg-indigo-50 dark:bg-[#0d131f] border border-indigo-200 dark:border-[#253349] flex items-center justify-center text-indigo-600 dark:text-indigo-400">
                   <Icon className="w-5 h-5" />
                 </div>
-                <h4 className="font-bold text-slate-900 text-base">{pillar.title}</h4>
-                <p className="text-xs text-slate-600 leading-relaxed">{pillar.description}</p>
+                <h4 className="font-bold text-slate-900 dark:text-white text-base">{pillar.title}</h4>
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">{pillar.description}</p>
               </div>
             );
           })}
@@ -145,18 +145,18 @@ export default function LandingPage({ onOpenAuth, onQuickDemo }) {
       </section>
 
       {/* 3. How It Works Steps */}
-      <section className="pro-card p-8 rounded-xl bg-white border border-slate-200 space-y-8">
+      <section className="pro-card p-8 rounded-xl bg-white dark:bg-[#162030] border border-slate-200 dark:border-[#233147] shadow-sm space-y-8">
         <div className="text-center space-y-1">
-          <h2 className="text-xs font-bold text-brand-700 uppercase tracking-wider">Simple Process</h2>
-          <h3 className="text-2xl font-bold text-slate-900">How ConnectEd Works</h3>
+          <h2 className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">Simple Process</h2>
+          <h3 className="text-2xl font-bold text-slate-900 dark:text-white">How ConnectEd Works</h3>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {howItWorksSteps.map((s, idx) => (
-            <div key={idx} className="space-y-2 border-l-2 border-brand-500 pl-4">
-              <span className="text-xs font-extrabold text-brand-600">{s.step}</span>
-              <h4 className="font-bold text-slate-900 text-sm">{s.title}</h4>
-              <p className="text-xs text-slate-600 leading-relaxed">{s.description}</p>
+            <div key={idx} className="space-y-2 border-l-2 border-indigo-500 pl-4">
+              <span className="text-xs font-extrabold text-indigo-600 dark:text-indigo-400">{s.step}</span>
+              <h4 className="font-bold text-slate-900 dark:text-white text-sm">{s.title}</h4>
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">{s.description}</p>
             </div>
           ))}
         </div>
@@ -165,20 +165,20 @@ export default function LandingPage({ onOpenAuth, onQuickDemo }) {
       {/* 4. Verified Alumni Testimonials */}
       <section className="space-y-8">
         <div className="text-center space-y-1">
-          <h2 className="text-xs font-bold text-brand-700 uppercase tracking-wider">Alumni Proof</h2>
-          <h3 className="text-2xl font-bold text-slate-900">Trusted by Verified Alumni Leaders</h3>
+          <h2 className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">Alumni Proof</h2>
+          <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Trusted by Verified Alumni Leaders</h3>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {alumniTestimonials.map((item, idx) => (
-            <div key={idx} className="pro-card p-6 rounded-xl bg-slate-50 border border-slate-200 space-y-4">
-              <p className="text-xs text-slate-700 italic leading-relaxed">"{item.quote}"</p>
-              <div className="flex items-center space-x-3 pt-2 border-t border-slate-200">
-                <img src={item.avatar} alt={item.name} className="w-10 h-10 rounded-lg object-cover ring-1 ring-slate-300" />
+            <div key={idx} className="pro-card p-6 rounded-xl bg-white dark:bg-[#162030] border border-slate-200 dark:border-[#233147] shadow-sm space-y-4">
+              <p className="text-xs text-slate-700 dark:text-slate-300 italic leading-relaxed">"{item.quote}"</p>
+              <div className="flex items-center space-x-3 pt-2 border-t border-slate-200 dark:border-[#233147]">
+                <img src={item.avatar} alt={item.name} className="w-10 h-10 rounded-lg object-cover ring-1 ring-slate-300 dark:ring-slate-700" />
                 <div>
-                  <h4 className="font-bold text-slate-900 text-xs">{item.name}</h4>
-                  <p className="text-[11px] text-brand-700 font-medium">{item.role} @ {item.company}</p>
-                  <p className="text-[10px] text-slate-500">{item.college}</p>
+                  <h4 className="font-bold text-slate-900 dark:text-white text-xs">{item.name}</h4>
+                  <p className="text-[11px] text-indigo-600 dark:text-indigo-400 font-medium">{item.role} @ {item.company}</p>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400">{item.college}</p>
                 </div>
               </div>
             </div>
@@ -187,7 +187,7 @@ export default function LandingPage({ onOpenAuth, onQuickDemo }) {
       </section>
 
       {/* 5. Call To Action Banner */}
-      <section className="pro-card p-8 sm:p-10 rounded-xl bg-slate-900 text-white text-center space-y-6 shadow-xl">
+      <section className="pro-card p-8 sm:p-10 rounded-xl bg-slate-900 dark:bg-[#131c2e] text-white text-center space-y-6 shadow-xl border border-slate-800 dark:border-[#233147]">
         <div className="space-y-2">
           <h3 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Ready to Land Your Target Career Goal?</h3>
           <p className="text-xs sm:text-sm text-slate-300 max-w-xl mx-auto">
@@ -198,7 +198,7 @@ export default function LandingPage({ onOpenAuth, onQuickDemo }) {
         <div className="flex flex-wrap items-center justify-center gap-3">
           <button
             onClick={() => onOpenAuth('register')}
-            className="px-6 py-3 rounded-lg bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm shadow-md transition"
+            className="px-6 py-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm shadow-md transition"
           >
             Create Free Account
           </button>
@@ -212,10 +212,10 @@ export default function LandingPage({ onOpenAuth, onQuickDemo }) {
       </section>
 
       {/* Footer */}
-      <footer className="pt-8 border-t border-slate-200 text-center text-xs text-slate-500 space-y-2">
+      <footer className="pt-8 border-t border-slate-200 dark:border-[#233147] text-center text-xs text-slate-500 dark:text-slate-400 space-y-2">
         <div className="flex items-center justify-center space-x-2">
-          <GraduationCap className="w-4 h-4 text-brand-600" />
-          <span className="font-bold text-slate-900">ConnectEd Platform</span>
+          <GraduationCap className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+          <span className="font-bold text-slate-900 dark:text-white">ConnectEd Platform</span>
         </div>
         <p>© 2026 ConnectEd Alumni Career & Mentorship Platform. All rights reserved.</p>
       </footer>

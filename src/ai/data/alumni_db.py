@@ -10,7 +10,13 @@ def load_alumni_database(custom_file_path: str = None) -> List[Dict[str, Any]]:
     if os.path.exists(target_path):
         try:
             with open(target_path, "r", encoding="utf-8") as f:
-                return json.load(f)
+                content = f.read().strip()
+                if "const alumniMockData =" in content:
+                    content = content.split("const alumniMockData =", 1)[1]
+                if "export default" in content:
+                    content = content.split("export default", 1)[0]
+                content = content.strip().rstrip(";")
+                return json.loads(content)
         except Exception as e:
             print(f"[Python AI DB] Warning loading {target_path}: {e}")
 

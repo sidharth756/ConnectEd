@@ -39,7 +39,7 @@ function generateToken(user) {
  */
 export async function register(req, res, next) {
   try {
-    const { name, email, password, role } = req.body;
+    const { name, email, password, role, major, graduationYear, targetRole, targetCompany } = req.body;
     const normalizedEmail = email.toLowerCase().trim();
 
     // Check if email already exists
@@ -60,18 +60,30 @@ export async function register(req, res, next) {
     // Hash password with bcrypt
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create user and initial profile if STUDENT
+    // Create user and initial profile
     const user = await prisma.user.create({
       data: {
         name,
         email: normalizedEmail,
         password: hashedPassword,
-        role,
-        ...(role === 'STUDENT' && {
+        role: role || 'STUDENT',
+        ...((!role || role === 'STUDENT') && {
           studentProfile: {
             create: {
-              major: 'General Studies',
-              graduationYear: new Date().getFullYear() + 4,
+              major: major || '',
+              graduationYear: Number(graduationYear) || (new Date().getFullYear() + 4),
+              targetRole: targetRole || '',
+              targetCompany: targetCompany || '',
+            },
+          },
+        }),
+        ...(role === 'ALUMNI' && {
+          alumniProfile: {
+            create: {
+              major: major || '',
+              graduationYear: Number(graduationYear) || 2020,
+              currentRole: targetRole || '',
+              company: targetCompany || '',
             },
           },
         }),

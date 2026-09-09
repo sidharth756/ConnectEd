@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import alumniMockData from '../src/ai/data/alumniMockData.js';
 const prisma = new PrismaClient();
 
 
@@ -31,8 +32,10 @@ async function main() {
       major: 'Computer Science',
       graduationYear: 2026,
       bio: 'Aspiring Software Engineer passionate about backend systems and distributed databases.',
-      targetRole: 'Software Engineer',
-      skills: ['Java', 'C++', 'SQL', 'React', 'Node.js'],
+      targetRole: 'Senior AI Engineer',
+      targetCompany: 'Google DeepMind',
+      targetDays: 100,
+      skills: ['Java', 'C++', 'SQL', 'React', 'Node.js', 'Python'],
       gpa: 3.8,
       githubUrl: 'https://github.com/aaravsharma',
       linkedinUrl: 'https://linkedin.com/in/aaravsharma',
@@ -42,8 +45,10 @@ async function main() {
       major: 'Computer Science',
       graduationYear: 2026,
       bio: 'Aspiring Software Engineer passionate about backend systems and distributed databases.',
-      targetRole: 'Software Engineer',
-      skills: ['Java', 'C++', 'SQL', 'React', 'Node.js'],
+      targetRole: 'Senior AI Engineer',
+      targetCompany: 'Google DeepMind',
+      targetDays: 100,
+      skills: ['Java', 'C++', 'SQL', 'React', 'Node.js', 'Python'],
       gpa: 3.8,
       githubUrl: 'https://github.com/aaravsharma',
       linkedinUrl: 'https://linkedin.com/in/aaravsharma',
@@ -91,141 +96,71 @@ async function main() {
     },
   });
 
-  // 2. Seed Alumni (Users + AlumniProfiles)
-  const alumni1User = await prisma.user.upsert({
-    where: { email: 'alumni1@connected.demo' },
-    update: {
-      name: 'Vikram Patel',
-      role: 'ALUMNI',
-      password: DEFAULT_SEED_PASSWORD_HASH,
-    },
-    create: {
-      email: 'alumni1@connected.demo',
-      name: 'Vikram Patel',
-      role: 'ALUMNI',
-      password: DEFAULT_SEED_PASSWORD_HASH,
-      avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d',
-    },
-  });
+  // 2. Seed Alumni (Users + AlumniProfiles) from alumniMockData.js
+  console.log(`🌱 Seeding ${alumniMockData.length} Alumni records into database...`);
+  
+  let alumni1User = null;
+  let alumni2User = null;
+  let alumni3User = null;
+  let alumni1Profile = null;
+  let alumni2Profile = null;
+  let alumni3Profile = null;
+  
+  for (let i = 0; i < alumniMockData.length; i++) {
+    const alum = alumniMockData[i];
+    const email = alum.email && !alum.email.includes('@example.com') ? alum.email : `alumni_${alum.id || i}@connected.demo`;
+    
+    const alumUser = await prisma.user.upsert({
+      where: { email: email },
+      update: {
+        name: alum.name,
+        role: 'ALUMNI',
+        avatarUrl: alum.avatarUrl || alum.avatar,
+      },
+      create: {
+        email: email,
+        name: alum.name,
+        role: 'ALUMNI',
+        password: DEFAULT_SEED_PASSWORD_HASH,
+        avatarUrl: alum.avatarUrl || alum.avatar,
+      },
+    });
 
-  const alumni1Profile = await prisma.alumniProfile.upsert({
-    where: { userId: alumni1User.id },
-    update: {
-      company: 'Google',
-      role: 'Senior Software Engineer',
-      graduationYear: 2020,
-      yearsOfExperience: 5,
-      bio: 'Building scalable backend microservices and cloud infrastructure at Google.',
-      skills: ['Java', 'Spring Boot', 'PostgreSQL', 'System Design'],
-      isMentor: true,
-      mentorBio: 'Glad to mentor students interested in backend development and system design.',
-      maxMentees: 3,
-      linkedinUrl: 'https://linkedin.com/in/vikrampatel',
-    },
-    create: {
-      userId: alumni1User.id,
-      company: 'Google',
-      role: 'Senior Software Engineer',
-      graduationYear: 2020,
-      yearsOfExperience: 5,
-      bio: 'Building scalable backend microservices and cloud infrastructure at Google.',
-      skills: ['Java', 'Spring Boot', 'PostgreSQL', 'System Design'],
-      isMentor: true,
-      mentorBio: 'Glad to mentor students interested in backend development and system design.',
-      maxMentees: 3,
-      linkedinUrl: 'https://linkedin.com/in/vikrampatel',
-    },
-  });
+    const alumProfileData = {
+      company: alum.company,
+      role: alum.role || alum.title,
+      graduationYear: Number(alum.graduationYear) || 2021,
+      yearsOfExperience: Number(alum.experienceYears) || 3,
+      major: alum.major || alum.domain || 'Computer Science',
+      degree: alum.degree || 'B.E. Computer Science',
+      location: alum.location || 'India',
+      bio: alum.bio,
+      skills: Array.isArray(alum.skills) ? alum.skills : [],
+      isMentor: alum.willingToMentor !== false,
+      mentorBio: alum.matchReason || alum.bio,
+      maxMentees: 5,
+      linkedinUrl: alum.linkedin || alum.linkedInUrl,
+      availability: alum.availability || 'Available for Mentorship',
+      impactScore: Number(alum.impactScore) || 850,
+      menteesGuided: Number(alum.menteesGuided) || 10,
+      badgeTier: alum.badgeTier || 'Verified Alum ✨',
+      matchScore: Number(alum.matchScore) || 85,
+      matchReason: alum.matchReason || alum.bio
+    };
 
-  const alumni2User = await prisma.user.upsert({
-    where: { email: 'alumni2@connected.demo' },
-    update: {
-      name: 'Priya Nair',
-      role: 'ALUMNI',
-      password: DEFAULT_SEED_PASSWORD_HASH,
-    },
-    create: {
-      email: 'alumni2@connected.demo',
-      name: 'Priya Nair',
-      role: 'ALUMNI',
-      password: DEFAULT_SEED_PASSWORD_HASH,
-      avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330',
-    },
-  });
+    const alumProfile = await prisma.alumniProfile.upsert({
+      where: { userId: alumUser.id },
+      update: alumProfileData,
+      create: {
+        userId: alumUser.id,
+        ...alumProfileData
+      },
+    });
 
-  const alumni2Profile = await prisma.alumniProfile.upsert({
-    where: { userId: alumni2User.id },
-    update: {
-      company: 'Amazon',
-      role: 'Data Engineer',
-      graduationYear: 2019,
-      yearsOfExperience: 6,
-      bio: 'Specializing in distributed data pipelines, ETL, and cloud data warehouses.',
-      skills: ['Python', 'SQL', 'AWS', 'Apache Spark'],
-      isMentor: true,
-      mentorBio: 'Passionate about guiding students pursuing data engineering and analytics careers.',
-      maxMentees: 4,
-      linkedinUrl: 'https://linkedin.com/in/priyanair',
-    },
-    create: {
-      userId: alumni2User.id,
-      company: 'Amazon',
-      role: 'Data Engineer',
-      graduationYear: 2019,
-      yearsOfExperience: 6,
-      bio: 'Specializing in distributed data pipelines, ETL, and cloud data warehouses.',
-      skills: ['Python', 'SQL', 'AWS', 'Apache Spark'],
-      isMentor: true,
-      mentorBio: 'Passionate about guiding students pursuing data engineering and analytics careers.',
-      maxMentees: 4,
-      linkedinUrl: 'https://linkedin.com/in/priyanair',
-    },
-  });
-
-  const alumni3User = await prisma.user.upsert({
-    where: { email: 'alumni3@connected.demo' },
-    update: {
-      name: 'Rohan Mehta',
-      role: 'ALUMNI',
-      password: DEFAULT_SEED_PASSWORD_HASH,
-    },
-    create: {
-      email: 'alumni3@connected.demo',
-      name: 'Rohan Mehta',
-      role: 'ALUMNI',
-      password: DEFAULT_SEED_PASSWORD_HASH,
-      avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e',
-    },
-  });
-
-  const alumni3Profile = await prisma.alumniProfile.upsert({
-    where: { userId: alumni3User.id },
-    update: {
-      company: 'Microsoft',
-      role: 'Product Manager',
-      graduationYear: 2018,
-      yearsOfExperience: 7,
-      bio: 'Leading product management for cloud computing platforms.',
-      skills: ['Product Strategy', 'Agile', 'Cloud Computing', 'User Research'],
-      isMentor: false,
-      mentorBio: null,
-      maxMentees: 0,
-      linkedinUrl: 'https://linkedin.com/in/rohanmehta',
-    },
-    create: {
-      userId: alumni3User.id,
-      company: 'Microsoft',
-      role: 'Product Manager',
-      graduationYear: 2018,
-      yearsOfExperience: 7,
-      bio: 'Leading product management for cloud computing platforms.',
-      skills: ['Product Strategy', 'Agile', 'Cloud Computing', 'User Research'],
-      isMentor: false,
-      mentorBio: null,
-      maxMentees: 0,
-      linkedinUrl: 'https://linkedin.com/in/rohanmehta',
-    },
-  });
+    if (i === 0) { alumni1User = alumUser; alumni1Profile = alumProfile; }
+    if (i === 1) { alumni2User = alumUser; alumni2Profile = alumProfile; }
+    if (i === 2) { alumni3User = alumUser; alumni3Profile = alumProfile; }
+  }
 
   // 3. Seed Mentorships
   const existingMentorship1 = await prisma.mentorship.findFirst({
