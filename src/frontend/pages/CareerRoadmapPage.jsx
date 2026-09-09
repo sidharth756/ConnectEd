@@ -18,9 +18,15 @@ import {
   BookOpen,
   Code,
   Layers,
-  CheckSquare
+  CheckSquare,
+  Wrench,
+  Target,
+  HelpCircle,
+  AlertCircle,
+  FileText,
+  Plus
 } from 'lucide-react';
-import { roadmapApi, userApi } from '../services/api';
+import { roadmapApi, userApi, careerIntelligenceApi } from '../services/api';
 
 export default function CareerRoadmapPage({ user: propUser, setActiveTab, onOpenAI }) {
   const [roadmapData, setRoadmapData] = useState(null);
@@ -29,11 +35,60 @@ export default function CareerRoadmapPage({ user: propUser, setActiveTab, onOpen
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [dbSaved, setDbSaved] = useState(false);
+
+  // Market Intelligence state
+  const [marketIntel, setMarketIntel] = useState(null);
+  const [intelLoading, setIntelLoading] = useState(false);
   
+  // Task level learning resources state
+  const [taskResourcesMap, setTaskResourcesMap] = useState({});
+  const [expandedTaskResources, setExpandedTaskResources] = useState({});
+
   // Custom AI Roadmap Modal state
   const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
   const [targetRoleInput, setTargetRoleInput] = useState('');
   const [timelineWeeksInput, setTimelineWeeksInput] = useState(12);
+
+  const toggleTaskResources = async (taskId, taskText, skills = []) => {
+    const isExpanding = !expandedTaskResources[taskId];
+    setExpandedTaskResources(prev => ({ ...prev, [taskId]: isExpanding }));
+
+    if (isExpanding && (!taskResourcesMap[taskId] || taskResourcesMap[taskId].error)) {
+      setTaskResourcesMap(prev => ({
+        ...prev,
+        [taskId]: { loading: true, resources: [], practice: null, outcome: null, error: null }
+      }));
+
+      try {
+        const res = await roadmapApi.getTaskResources({ taskId, taskText, skills });
+        if (res.success && res.resources && res.resources.length > 0) {
+          setTaskResourcesMap(prev => ({
+            ...prev,
+            [taskId]: { 
+              loading: false, 
+              resources: res.resources, 
+              practice: res.practice, 
+              outcome: res.outcome, 
+              topic: res.topic, 
+              error: null 
+            }
+          }));
+        } else {
+          setTaskResourcesMap(prev => ({
+            ...prev,
+            [taskId]: { loading: false, resources: [], practice: null, outcome: null, error: res.message || 'Learning resources currently unavailable for this custom task.' }
+          }));
+        }
+      } catch (e) {
+        setTaskResourcesMap(prev => ({
+          ...prev,
+          [taskId]: { loading: false, resources: [], practice: null, outcome: null, error: 'Learning resources currently unavailable for this custom task.' }
+        }));
+      }
+    }
+  };
+
+
 
   const presetRoles = [
     'Full Stack Software Engineer',
@@ -75,9 +130,29 @@ export default function CareerRoadmapPage({ user: propUser, setActiveTab, onOpen
         setExpandedPhases({ [parsedRoadmap.phases[0].phaseNumber || 1]: true });
       }
       setLoading(false);
+
+      // Fetch Tavily Market Intelligence
+      const targetRole = parsedRoadmap?.targetRole || u?.targetRole || 'Senior AI Engineer';
+      const skills = parsedRoadmap?.skillGapAnalysis?.possessedSkills || u?.skills || [];
+      fetchMarketIntel(targetRole, skills);
     }
     load();
   }, []);
+
+  async function fetchMarketIntel(role, skills = []) {
+    setIntelLoading(true);
+    try {
+      const intel = await careerIntelligenceApi.analyze({
+        careerGoal: role,
+        currentSkills: skills
+      });
+      setMarketIntel(intel);
+    } catch (e) {
+      console.warn("Error fetching market intelligence:", e);
+    } finally {
+      setIntelLoading(false);
+    }
+  }
 
   function getDefault4PhaseRoadmap(targetRole, userInfo) {
     const isDemoAlex = userInfo?.id === 'user_101' || userInfo?.email === 'alex.johnson@kce.edu';
@@ -234,6 +309,30 @@ export default function CareerRoadmapPage({ user: propUser, setActiveTab, onOpen
     }
   };
 
+  const handleRefreshMarketRoadmap = async () => {
+    setGenerating(true);
+    try {
+      const role = roadmapData?.targetRole || user?.targetRole || 'Software Engineer';
+      const skills = user?.skills?.map(s => typeof s === 'string' ? s : s.name) || ['Python', 'Git', 'JavaScript'];
+      
+      const updatedData = await roadmapApi.refreshMarketRoadmap({
+        targetRole: role,
+        currentSkills: skills,
+        timelineWeeks: timelineWeeksInput
+      });
+
+      if (updatedData) {
+        setRoadmapData(updatedData);
+        setDbSaved(true);
+        setTimeout(() => setDbSaved(false), 3000);
+      }
+    } catch (e) {
+      console.error("Market roadmap refresh error:", e);
+    } finally {
+      setGenerating(false);
+    }
+  };
+
   const handleGenerateCustomAIRoadmap = async (roleToGenerate) => {
     const role = roleToGenerate || targetRoleInput || user?.targetRole || 'Senior AI Engineer';
     setGenerating(true);
@@ -254,6 +353,8 @@ export default function CareerRoadmapPage({ user: propUser, setActiveTab, onOpen
       if (finalRoadmap?.phases && finalRoadmap.phases.length > 0) {
         setExpandedPhases({ [finalRoadmap.phases[0].phaseNumber || 1]: true });
       }
+
+      fetchMarketIntel(role, user?.skills?.map(s => typeof s === 'string' ? s : s.name) || []);
 
       setIsCustomizerOpen(false);
       setDbSaved(true);
@@ -307,19 +408,19 @@ export default function CareerRoadmapPage({ user: propUser, setActiveTab, onOpen
         </div>
         <div className="flex flex-wrap items-center gap-2.5">
           <button 
-            onClick={() => handleGenerateCustomAIRoadmap()}
+            onClick={() => handleRefreshMarketRoadmap()}
             disabled={generating}
             className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs shadow-md transition flex items-center space-x-2 active:scale-95 disabled:opacity-50"
           >
             {generating ? (
               <>
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                <span>Analyzing Path...</span>
+                <span>Researching Web Market (Tavily)...</span>
               </>
             ) : (
               <>
                 <Sparkles className="w-4 h-4 text-indigo-100" />
-                <span>Analyse Career Path</span>
+                <span>Update Roadmap (Tavily Research)</span>
               </>
             )}
           </button>
@@ -333,6 +434,57 @@ export default function CareerRoadmapPage({ user: propUser, setActiveTab, onOpen
           </button>
         </div>
       </div>
+
+      {/* Market-Driven Updates Banner (Tavily Research Output) */}
+      {roadmapData?.marketUpdates && (
+        <div className="p-5 rounded-2xl bg-indigo-950/40 border border-indigo-800 text-slate-100 shadow-md space-y-3 text-xs">
+          <div className="flex items-center justify-between border-b border-indigo-900/60 pb-2">
+            <div className="flex items-center space-x-2">
+              <Sparkles className="w-4 h-4 text-indigo-400" />
+              <span className="font-extrabold uppercase text-indigo-300 tracking-wider">Market-Driven Updates (Tavily Web Research & Extract)</span>
+            </div>
+            <span className="text-[10px] text-indigo-300 bg-indigo-900/80 px-2.5 py-0.5 rounded-lg border border-indigo-700 font-bold">Updated: {roadmapData.marketUpdates.updatedAt}</span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+            <div className="space-y-1.5">
+              <span className="text-[10px] font-bold text-indigo-300 uppercase flex items-center space-x-1">
+                <Plus className="w-3 h-3 text-indigo-300" />
+                <span>Added Missing Skills to Roadmap:</span>
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {(roadmapData.marketUpdates.addedSkills || []).map((sk, idx) => (
+                  <span key={idx} className="px-2 py-0.5 rounded bg-indigo-900/80 text-indigo-200 border border-indigo-700 font-bold text-[11px] flex items-center space-x-1">
+                    <Plus className="w-3 h-3 text-indigo-300 flex-none" />
+                    <span>{sk}</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <span className="text-[10px] font-bold text-emerald-400 uppercase flex items-center space-x-1">
+                <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                <span>Already Covered Student Skills:</span>
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {(roadmapData.marketUpdates.coveredSkills || []).map((sk, idx) => (
+                  <span key={idx} className="px-2 py-0.5 rounded bg-emerald-950/80 text-emerald-300 border border-emerald-800 font-bold text-[11px] flex items-center space-x-1">
+                    <Check className="w-3 h-3 text-emerald-400 flex-none" />
+                    <span>{sk}</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {roadmapData.marketUpdates.marketInsights && roadmapData.marketUpdates.marketInsights.length > 0 && (
+            <p className="text-slate-300 italic text-[11px] pt-1">
+              "{roadmapData.marketUpdates.marketInsights.join(' ')}"
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Target Destination & Skill Gap Banner */}
       <div className="p-6 rounded-2xl bg-white dark:bg-[#162030] border border-slate-200 dark:border-[#233147] text-slate-900 dark:text-white shadow-sm dark:shadow-xl space-y-5">
@@ -354,22 +506,30 @@ export default function CareerRoadmapPage({ user: propUser, setActiveTab, onOpen
         {/* Skill Gap Analysis Pills */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
           <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#0d131f] border border-slate-200 dark:border-[#253349] space-y-2">
-            <span className="text-[10px] uppercase font-bold text-emerald-600 dark:text-emerald-400 tracking-wider">Possessed Core Skills</span>
+            <span className="text-[10px] uppercase font-bold text-emerald-600 dark:text-emerald-400 tracking-wider flex items-center space-x-1">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span>Possessed Core Skills</span>
+            </span>
             <div className="flex flex-wrap gap-1.5 pt-1">
               {possessedSkills.map((sk, idx) => (
-                <span key={idx} className="px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 font-bold text-[11px]">
-                  ✓ {sk}
+                <span key={idx} className="px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 font-bold text-[11px] flex items-center space-x-1">
+                  <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400 flex-none" />
+                  <span>{sk}</span>
                 </span>
               ))}
             </div>
           </div>
 
           <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#0d131f] border border-slate-200 dark:border-[#253349] space-y-2">
-            <span className="text-[10px] uppercase font-bold text-amber-600 dark:text-amber-400 tracking-wider">Critical Missing Skill Gaps</span>
+            <span className="text-[10px] uppercase font-bold text-amber-600 dark:text-amber-400 tracking-wider flex items-center space-x-1">
+              <AlertCircle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+              <span>Critical Missing Skill Gaps</span>
+            </span>
             <div className="flex flex-wrap gap-1.5 pt-1">
               {missingSkills.map((sk, idx) => (
-                <span key={idx} className="px-2 py-0.5 rounded bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 font-bold text-[11px]">
-                  ! {sk}
+                <span key={idx} className="px-2 py-0.5 rounded bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 font-bold text-[11px] flex items-center space-x-1">
+                  <AlertCircle className="w-3 h-3 text-amber-600 dark:text-amber-400 flex-none" />
+                  <span>{sk}</span>
                 </span>
               ))}
             </div>
@@ -383,7 +543,135 @@ export default function CareerRoadmapPage({ user: propUser, setActiveTab, onOpen
         )}
       </div>
 
+
+      {/* Tavily AI Career Intelligence Section */}
+      <div className="p-6 rounded-2xl bg-white dark:bg-[#162030] border border-slate-200 dark:border-[#233147] shadow-sm text-slate-900 dark:text-white space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 dark:border-[#233147] pb-4">
+          <div className="space-y-1">
+            <span className="text-[10px] uppercase font-bold text-indigo-600 dark:text-indigo-400 tracking-wider flex items-center space-x-1.5">
+              <Sparkles className="w-4 h-4 text-indigo-500" />
+              <span>LIVE AI CAREER MARKET INTELLIGENCE</span>
+            </span>
+            <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">
+              2026 Job Market Demands & Learning Resources for {currentRole}
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Retrieved real-time industry requirements combined with verified KCE alumni guidance.
+            </p>
+          </div>
+          <span className="text-xs px-3 py-1 rounded-xl bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 font-bold border border-indigo-200 dark:border-indigo-800 flex-none self-start sm:self-auto">
+            Powered by Tavily Web Search
+          </span>
+        </div>
+
+        {intelLoading ? (
+          <div className="p-6 text-center text-xs text-slate-400 space-y-2">
+            <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+            <p className="font-semibold">Retrieving real-time Tavily market intelligence & official learning resources...</p>
+          </div>
+        ) : marketIntel ? (
+          <div className="space-y-5 text-xs">
+            {/* Market Insights & Trends */}
+            {marketIntel.marketInsights && marketIntel.marketInsights.length > 0 && (
+              <div className="p-4 rounded-xl bg-slate-50 dark:bg-[#0d131f] border border-slate-200 dark:border-[#253349] space-y-2">
+                <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider block">
+                  Current Market Trends & Hiring Requirements
+                </span>
+                <ul className="space-y-1.5 text-slate-700 dark:text-slate-300 font-medium">
+                  {marketIntel.marketInsights.map((insight, idx) => (
+                    <li key={idx} className="flex items-start space-x-2">
+                      <span className="text-indigo-500 font-bold flex-none">•</span>
+                      <span>{insight}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Official Open-Source & Documentation Resources */}
+            {marketIntel.learningResources && marketIntel.learningResources.length > 0 && (
+              <div className="space-y-2.5">
+                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+                  Recommended Official Open-Source & Documentation Resources
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {marketIntel.learningResources.map((res, idx) => (
+                    <a
+                      key={idx}
+                      href={res.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#0d131f] border border-slate-200 dark:border-[#253349] hover:border-indigo-500 transition flex items-start justify-between group"
+                    >
+                      <div className="space-y-1 pr-2">
+                        <div className="flex items-center space-x-2">
+                          <span className="px-2 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-extrabold text-[10px]">
+                            {res.skill}
+                          </span>
+                          <span className="text-[10px] text-slate-400 font-medium">{res.type}</span>
+                        </div>
+                        <div className="font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition">
+                          {res.title}
+                        </div>
+                      </div>
+                      <ExternalLink className="w-4 h-4 text-slate-400 group-hover:text-indigo-600 flex-none" />
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Recommended Alumni Matches */}
+            {marketIntel.recommendedAlumni && marketIntel.recommendedAlumni.length > 0 && (
+              <div className="space-y-2.5">
+                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+                  Verified KCE Alumni Mentors for {currentRole}
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {marketIntel.recommendedAlumni.map((alum, idx) => (
+                    <div key={idx} className="p-3 rounded-xl bg-slate-50 dark:bg-[#0d131f] border border-slate-200 dark:border-[#253349] space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-slate-900 dark:text-white text-xs">{alum.name}</span>
+                        <span className="px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-bold text-[10px]">
+                          {alum.matchPercentage}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-indigo-600 dark:text-indigo-400 font-semibold">{alum.role} @ {alum.company}</p>
+                      <p className="text-[10px] text-slate-500">{alum.reason}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Tavily Search Sources Transparency */}
+            {marketIntel.sources && marketIntel.sources.length > 0 && (
+              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#0d131f] border border-slate-200 dark:border-[#253349] space-y-2">
+                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+                  Market Intelligence Sources (Tavily Citations)
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  {marketIntel.sources.map((src, idx) => (
+                    <a
+                      key={idx}
+                      href={src.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3 py-1.5 rounded-lg bg-white dark:bg-[#162030] border border-slate-200 dark:border-[#253349] hover:border-indigo-500 text-slate-700 dark:text-slate-300 font-medium text-[11px] flex items-center space-x-1.5 transition"
+                    >
+                      <span className="truncate max-w-[220px]">{src.title}</span>
+                      <ExternalLink className="w-3 h-3 text-slate-400 flex-none" />
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        ) : null}
+      </div>
+
       {/* Visual Connected Node Trajectory */}
+
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center space-x-2">
@@ -491,36 +779,169 @@ export default function CareerRoadmapPage({ user: propUser, setActiveTab, onOpen
                             <CheckSquare className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
                             <span>Actionable Task Checklist (Database Saved)</span>
                           </h5>
-                          <div className="space-y-1.5">
-                            {tasks.map((t, tIdx) => (
-                              <button
-                                key={t.id || tIdx}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleToggleTask(pIdx, tIdx);
-                                }}
-                                className={`w-full p-2.5 rounded-xl flex items-center justify-between text-xs text-left transition border ${
-                                  t.done 
-                                    ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 font-bold' 
-                                    : 'bg-slate-50 dark:bg-[#0d131f] border-slate-200 dark:border-[#253349] text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-[#192436]'
-                                }`}
-                              >
-                                <div className="flex items-center space-x-3">
-                                  <div className={`w-4 h-4 rounded flex items-center justify-center flex-none ${
-                                    t.done ? 'bg-emerald-600 text-white font-bold' : 'border border-slate-400 dark:border-slate-600 bg-white dark:bg-[#0d131f]'
-                                  }`}>
-                                    {t.done && <Check className="w-3 h-3 stroke-[3]" />}
+                          <div className="space-y-2">
+                            {tasks.map((t, tIdx) => {
+                              const tId = t.id || `p${phaseNum}_t${tIdx}`;
+                              const isResExpanded = !!expandedTaskResources[tId];
+                              const resState = taskResourcesMap[tId];
+                              const resCount = resState?.resources?.length || 0;
+
+                              return (
+                                <div key={tId} className="space-y-2 rounded-xl border border-slate-200 dark:border-[#253349] p-3 bg-slate-50 dark:bg-[#0d131f] transition">
+                                  {/* Task completion toggle row */}
+                                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                    <div 
+                                      onClick={() => handleToggleTask(pIdx, tIdx)}
+                                      className="flex items-center space-x-3 text-xs text-left cursor-pointer flex-1 select-none"
+                                    >
+                                      <div className={`w-4 h-4 rounded flex items-center justify-center flex-none ${
+                                        t.done ? 'bg-emerald-600 text-white font-bold' : 'border border-slate-400 dark:border-slate-600 bg-white dark:bg-[#0d131f]'
+                                      }`}>
+                                        {t.done && <Check className="w-3 h-3 stroke-[3]" />}
+                                      </div>
+                                      <span className={`font-bold text-slate-900 dark:text-white ${t.done ? 'line-through opacity-80' : ''}`}>{t.text}</span>
+                                    </div>
+
+                                    <div className="flex items-center space-x-2 flex-none self-end sm:self-auto">
+                                      {/* Collapsible Resources Button */}
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          toggleTaskResources(tId, t.text, phase.skillsToLearn || []);
+                                        }}
+                                        className="px-2.5 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/90 hover:bg-indigo-100 dark:hover:bg-indigo-900 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 text-[11px] font-extrabold transition flex items-center space-x-1.5 shadow-sm"
+                                      >
+                                        <BookOpen className="w-3.5 h-3.5 text-indigo-500" />
+                                        <span>Learning Resources{resCount > 0 ? ` (${resCount})` : ''}</span>
+                                        {isResExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                                      </button>
+
+                                      <span className={`text-[10px] px-2 py-1 rounded font-bold ${
+                                        t.done ? 'bg-emerald-600 dark:bg-emerald-800 text-white' : 'bg-slate-200 dark:bg-[#162030] text-slate-700 dark:text-slate-400'
+                                      }`}>
+                                        {t.done ? 'DONE' : 'TO DO'}
+                                      </span>
+                                    </div>
                                   </div>
-                                  <span className={t.done ? 'line-through opacity-80' : ''}>{t.text}</span>
+
+                                  {/* Expandable Learning Resources Section */}
+                                  {isResExpanded && (
+                                    <div className="pt-3 border-t border-slate-200 dark:border-[#233147] space-y-2 mt-1">
+                                      {resState?.loading ? (
+                                        <div className="p-3 text-center text-[11px] text-slate-400 space-y-1.5">
+                                          <div className="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+                                          <p className="font-semibold">Discovering trusted learning materials via Tavily Search...</p>
+                                        </div>
+                                      ) : resState?.error || (!resState?.resources || resState.resources.length === 0) ? (
+                                        <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 text-amber-800 dark:text-amber-300 text-xs italic font-medium flex items-center justify-between">
+                                          <span>{resState?.error || "Learning resources temporarily unavailable."}</span>
+                                          <button 
+                                            onClick={() => toggleTaskResources(tId, t.text, phase.skillsToLearn || [])} 
+                                            className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold hover:underline ml-2"
+                                          >
+                                            Retry Search
+                                          </button>
+                                        </div>
+                                      ) : resState?.error || (!resState?.resources || resState.resources.length === 0) ? (
+                                        <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 text-amber-800 dark:text-amber-300 text-xs italic font-medium flex items-center justify-between">
+                                          <span>{resState?.error || "Learning resources currently unavailable for this task."}</span>
+                                          <button 
+                                            onClick={() => toggleTaskResources(tId, t.text, phase.skillsToLearn || [])} 
+                                            className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold hover:underline ml-2"
+                                          >
+                                            Retry Search
+                                          </button>
+                                        </div>
+                                      ) : (
+                                        <div className="space-y-3">
+                                          <div className="flex flex-wrap items-center justify-between gap-2 text-[10px] px-1">
+                                            <span className="font-extrabold uppercase text-slate-500 dark:text-slate-400 tracking-wider flex items-center space-x-1.5">
+                                              <BookOpen className="w-3.5 h-3.5 text-indigo-500" />
+                                              <span>Hybrid Learning Path ({resState.resources.length} Best Materials)</span>
+                                            </span>
+                                            <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-extrabold text-[10px] border border-emerald-300 dark:border-emerald-800 flex items-center space-x-1">
+                                              <Sparkles className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                                              <span>Personalized for your roadmap</span>
+                                            </span>
+                                          </div>
+
+                                          {/* Resource Cards */}
+                                          <div className="grid grid-cols-1 gap-2">
+                                            {resState.resources.map((r, rIdx) => (
+                                              <div 
+                                                key={rIdx} 
+                                                className="p-3 rounded-xl bg-white dark:bg-[#162030] border border-slate-200 dark:border-[#253349] hover:border-indigo-500 transition shadow-sm space-y-1.5"
+                                              >
+                                                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
+                                                  <div className="space-y-1 pr-2">
+                                                    <div className="flex flex-wrap items-center gap-1.5">
+                                                      <span className="font-extrabold text-slate-900 dark:text-white text-xs flex items-center space-x-1.5">
+                                                        <FileText className="w-3.5 h-3.5 text-indigo-500 flex-none" />
+                                                        <span>{r.title}</span>
+                                                      </span>
+                                                      <span className="px-2 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-extrabold text-[10px] border border-indigo-200 dark:border-indigo-800">
+                                                        {r.type || 'Official Docs'}
+                                                      </span>
+                                                    </div>
+                                                    <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed font-normal">{r.description}</p>
+                                                    
+                                                    {r.reason && (
+                                                      <p className="text-[10px] text-indigo-600 dark:text-indigo-400 font-semibold italic bg-indigo-50/50 dark:bg-indigo-950/40 p-1.5 rounded-lg border border-indigo-100 dark:border-indigo-900/50 flex items-center space-x-1.5">
+                                                        <HelpCircle className="w-3 h-3 text-indigo-500 flex-none" />
+                                                        <span>Why recommended: {r.reason}</span>
+                                                      </p>
+                                                    )}
+                                                    
+                                                    <span className="text-[10px] text-slate-400 font-semibold block pt-0.5">Source: {r.source}</span>
+                                                  </div>
+
+                                                  <a
+                                                    href={r.url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-[11px] flex items-center justify-center space-x-1.5 flex-none shadow-sm transition self-start sm:self-auto"
+                                                  >
+                                                    <span>Open Resource</span>
+                                                    <ExternalLink className="w-3.5 h-3.5" />
+                                                  </a>
+                                                </div>
+                                              </div>
+                                            ))}
+                                          </div>
+
+                                          {/* Practice & Outcome Actionable Boxes */}
+                                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs pt-1">
+                                            {resState.practice && (
+                                              <div className="p-3 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 text-indigo-950 dark:text-indigo-200 space-y-1">
+                                                <span className="text-[10px] font-extrabold uppercase text-indigo-600 dark:text-indigo-400 tracking-wider flex items-center space-x-1.5">
+                                                  <Wrench className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                                                  <span>PRACTICE EXERCISE</span>
+                                                </span>
+                                                <p className="text-[11px] font-semibold leading-relaxed">{resState.practice}</p>
+                                              </div>
+                                            )}
+
+                                            {resState.outcome && (
+                                              <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-950 dark:text-emerald-200 space-y-1">
+                                                <span className="text-[10px] font-extrabold uppercase text-emerald-600 dark:text-emerald-400 tracking-wider flex items-center space-x-1.5">
+                                                  <Target className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                                                  <span>EXPECTED LEARNING OUTCOME</span>
+                                                </span>
+                                                <p className="text-[11px] font-semibold leading-relaxed">{resState.outcome}</p>
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+                                      )}
+
+                                    </div>
+                                  )}
                                 </div>
-                                <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${
-                                  t.done ? 'bg-emerald-600 dark:bg-emerald-800 text-white' : 'bg-slate-200 dark:bg-[#162030] text-slate-700 dark:text-slate-400'
-                                }`}>
-                                  {t.done ? 'DONE' : 'TO DO'}
-                                </span>
-                              </button>
-                            ))}
+                              );
+                            })}
                           </div>
+
                         </div>
                       )}
 

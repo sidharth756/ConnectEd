@@ -6,6 +6,7 @@ import alumniRoutes from './alumni.routes.js';
 import mentorRoutes from './mentors.routes.js';
 import jobRoutes from './jobs.routes.js';
 import careerRoutes from './career.routes.js';
+import careerIntelligenceRoutes from './career-intelligence.routes.js';
 import aiRoutes from './ai.routes.js';
 
 const router = express.Router();
@@ -17,6 +18,8 @@ router.use('/alumni', alumniRoutes);
 router.use('/mentors', mentorRoutes);
 router.use('/jobs', jobRoutes);
 router.use('/career', careerRoutes);
+router.use('/career-intelligence', careerIntelligenceRoutes);
 router.use('/ai', aiRoutes);
 
 export default router;
+

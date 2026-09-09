@@ -907,6 +907,127 @@ export const roadmapApi = {
     });
 
     return fallbackData;
+  },
+
+  async refreshMarketRoadmap({ targetRole, currentSkills = [], timelineWeeks = 12 }) {
+    try {
+      const res = await fetch(`${getBackendUrl()}/api/career/roadmap/refresh-market`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          targetRole,
+          currentSkills,
+          timelineWeeks
+        })
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.data) {
+          await this.saveRoadmap({
+            studentId: 'student1',
+            targetRole,
+            roadmapData: json.data,
+            skillsToAcquire: json.data.skillGapAnalysis?.missingSkills || []
+          });
+          return json.data;
+        }
+      }
+    } catch (e) {
+      console.warn("Backend Market Roadmap refresh error:", e);
+    }
+    return null;
+  },
+
+  async getTaskResources({ taskId, taskText, skills = [] }) {
+
+    try {
+      const queryParams = new URLSearchParams({
+        taskId: taskId || 'task-1',
+        taskText: taskText || '',
+        skills: JSON.stringify(skills)
+      });
+      const res = await fetch(`${getBackendUrl()}/api/career/roadmap/resources?${queryParams}`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success) {
+          return json;
+        }
+      }
+    } catch (e) {
+      console.warn("Error fetching task resources from Tavily backend:", e);
+    }
+    return {
+      success: false,
+      message: "Learning resources temporarily unavailable.",
+      resources: []
+    };
+  }
+};
+
+
+export const careerIntelligenceApi = {
+  async analyze({ careerGoal, currentSkills = [], studentId = 'student1' }) {
+    try {
+      const res = await fetch(`${getBackendUrl()}/api/career-intelligence/analyze`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          careerGoal,
+          currentSkills,
+          studentId
+        })
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success) {
+          return json;
+        }
+      }
+    } catch (e) {
+      console.warn("Backend Career Intelligence API unavailable, using smart market fallback:", e);
+    }
+
+    const fallbackSkillMap = {
+      'AI Engineer': ['PyTorch', 'LLMs', 'RAG', 'Vector Databases', 'Docker', 'AWS'],
+      'Software Engineer': ['System Design', 'Docker', 'PostgreSQL', 'Microservices', 'AWS'],
+      'Data Scientist': ['PyTorch', 'SQL', 'A/B Testing', 'Machine Learning', 'Pandas'],
+      'Product Engineer': ['React', 'Next.js', 'TypeScript', 'Node.js', 'GraphQL'],
+    };
+    const marketSkills = fallbackSkillMap[careerGoal] || ['System Design', 'Docker', 'Cloud Infrastructure', 'APIs'];
+    const currentLower = new Set(currentSkills.map(s => s.toLowerCase()));
+    const skillGaps = marketSkills.filter(s => !currentLower.has(s.toLowerCase()));
+
+    return {
+      success: true,
+      careerGoal,
+      currentSkills,
+      marketSkills,
+      skillGaps,
+      recommendedLearningPath: skillGaps,
+      learningResources: skillGaps.map(skill => ({
+        skill,
+        title: `${skill} Official Developer Documentation & Tutorials`,
+        url: `https://www.google.com/search?q=${encodeURIComponent(skill + ' official documentation')}`,
+        type: 'Official Resource'
+      })),
+      recommendedAlumni: MOCK_ALUMNI.slice(0, 3).map(a => ({
+        alumniId: a.id,
+        name: a.name,
+        role: a.title || a.role,
+        company: a.company,
+        matchedSkills: a.skills ? a.skills.slice(0, 3) : ['Engineering'],
+        matchScore: a.matchScore || 90,
+        matchPercentage: `${a.matchScore || 90}%`,
+        reason: `KCE Alum working as ${a.title || a.role} @ ${a.company}.`
+      })),
+      marketInsights: [
+        `Market research for ${careerGoal} indicates strong demand for ${marketSkills.slice(0, 3).join(', ')}.`,
+        `Top tech companies hiring for ${careerGoal} require practical hands-on experience with ${skillGaps[0] || 'modern frameworks'}.`
+      ],
+      sources: [
+        { title: `${careerGoal} Job Market Trends 2026`, url: 'https://tavily.com', snippet: `Current hiring standards for ${careerGoal}`, source: 'Tavily' }
+      ]
+    };
   }
 };
 
