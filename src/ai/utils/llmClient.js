@@ -99,3 +99,63 @@ export async function generateStructuredJson(prompt, schema) {
     return null;
   }
 }
+
+/**
+ * Generate free-form natural language text via Local Ollama (Qwen 2.5 3B) or Gemini.
+ */
+export async function generateText(prompt) {
+  if (config.preferOllama) {
+    try {
+      const host = config.ollamaHost || 'http://localhost:11434';
+      const model = config.ollamaModel || 'qwen2.5:3b';
+
+      const response = await fetch(`${host}/api/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: model,
+          prompt: prompt,
+          stream: false,
+          options: {
+            temperature: 0.4
+          }
+        }),
+        signal: AbortSignal.timeout(15000)
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.response && data.response.trim()) {
+          console.log(`[AI Engine] Generated natural language response via Local Ollama (${model}) 🚀`);
+          return data.response.trim();
+        }
+      }
+    } catch (e) {
+      console.warn('[AI Engine] Ollama generateText offline or timed out:', e.message);
+    }
+  }
+
+  // Fallback to Gemini Cloud API if configured
+  const apiKey = config.geminiApiKey;
+  if (!apiKey) return null;
+
+  try {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${config.modelName}:generateContent?key=${apiKey}`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.4 }
+      })
+    });
+    if (response.ok) {
+      const data = await response.json();
+      return data.candidates?.[0]?.content?.parts?.[0]?.text || null;
+    }
+  } catch (err) {
+    console.error('[AI Engine] Exception in Gemini generateText:', err.message);
+  }
+
+  return null;
+}
