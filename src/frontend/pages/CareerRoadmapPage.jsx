@@ -54,11 +54,11 @@ export default function CareerRoadmapPage({ user: propUser, setActiveTab, onOpen
   useEffect(() => {
     async function load() {
       setLoading(true);
-      const [u, rData] = await Promise.all([
-        propUser ? Promise.resolve(propUser) : userApi.getCurrentUser(),
-        roadmapApi.getRoadmap('student1')
-      ]);
+      const u = propUser ? await Promise.resolve(propUser) : await userApi.getCurrentUser();
       setUser(u);
+      
+      const currentUserId = u?.id || 'student1';
+      const rData = await roadmapApi.getRoadmap(currentUserId);
       
       let parsedRoadmap = rData;
       if (Array.isArray(rData)) {
@@ -81,13 +81,13 @@ export default function CareerRoadmapPage({ user: propUser, setActiveTab, onOpen
 
       if (needsEnrichment) {
         // Auto-enrich resources live from Tavily AI endpoint
-        enrichRoadmapPhasesLive(parsedRoadmap, u?.targetRole || 'Senior AI Engineer');
+        enrichRoadmapPhasesLive(parsedRoadmap, u?.targetRole || 'Senior AI Engineer', currentUserId);
       }
     }
     load();
   }, []);
 
-  async function enrichRoadmapPhasesLive(currentRoadmap, targetRole) {
+  async function enrichRoadmapPhasesLive(currentRoadmap, targetRole, userId) {
     if (!currentRoadmap || !currentRoadmap.phases) return;
     let updated = false;
     const enrichedPhases = await Promise.all(
@@ -114,7 +114,7 @@ export default function CareerRoadmapPage({ user: propUser, setActiveTab, onOpen
       const newRoadmapData = { ...currentRoadmap, phases: enrichedPhases };
       setRoadmapData(newRoadmapData);
       roadmapApi.saveRoadmap({
-        studentId: 'student1',
+        studentId: userId || user?.id || 'student1',
         targetRole: newRoadmapData.targetRole || targetRole,
         roadmapData: newRoadmapData,
         skillsToAcquire: newRoadmapData.skillGapAnalysis?.missingSkills || []
@@ -365,7 +365,7 @@ export default function CareerRoadmapPage({ user: propUser, setActiveTab, onOpen
     setRoadmapData(updatedRoadmapData);
 
     const res = await roadmapApi.saveRoadmap({
-      studentId: 'student1',
+      studentId: user?.id || 'student1',
       targetRole: updatedRoadmapData.targetRole || user?.targetRole || 'Software Engineer',
       roadmapData: updatedRoadmapData,
       skillsToAcquire: updatedRoadmapData.skillGapAnalysis?.missingSkills || []

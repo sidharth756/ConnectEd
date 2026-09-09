@@ -67,8 +67,8 @@ export default function ResumeUploadModal({ isOpen, onClose, onApplyExtractedSki
   };
 
   const handleApplySkills = () => {
-    if (analysisResult && analysisResult.skills && onApplyExtractedSkills) {
-      onApplyExtractedSkills(analysisResult.skills);
+    if (analysisResult && onApplyExtractedSkills) {
+      onApplyExtractedSkills(analysisResult.skills, analysisResult);
     }
     onClose();
   };

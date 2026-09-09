@@ -52,10 +52,11 @@ export default function DashboardPage({ user: propUser, setActiveTab, onOpenAI, 
   async function loadData() {
     setLoading(true);
     try {
-      const [userData, alumniData, rData] = await Promise.all([
-        propUser ? Promise.resolve(propUser) : userApi.getCurrentUser(),
+      const userData = propUser ? await Promise.resolve(propUser) : await userApi.getCurrentUser();
+      const currentUserId = userData?.id || 'student1';
+      const [alumniData, rData] = await Promise.all([
         alumniApi.getAlumni(),
-        roadmapApi.getRoadmap('student1')
+        roadmapApi.getRoadmap(currentUserId)
       ]);
       setUser(userData);
       setTopAlumni((alumniData || []).slice(0, 3));

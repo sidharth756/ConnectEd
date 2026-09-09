@@ -18,12 +18,15 @@ import {
   Users
 } from 'lucide-react';
 import { userApi } from '../services/api';
+import ResumeUploadModal from './ResumeUploadModal';
 
 export default function ProfileEditModal({ isOpen, onClose, user, onProfileUpdated }) {
   if (!isOpen || !user) return null;
 
   const isAlumni = user.role === 'alumni' || user.role === 'ALUMNI';
   const [activeTab, setActiveTab] = useState('general');
+  const [isResumeModalOpen, setIsResumeModalOpen] = useState(false);
+  const [autofillSuccess, setAutofillSuccess] = useState(false);
 
   // Form State
   const [name, setName] = useState(user.name || '');
@@ -119,12 +122,35 @@ export default function ProfileEditModal({ isOpen, onClose, user, onProfileUpdat
     }
   };
 
+  const handleApplyExtractedSkills = (extractedSkills, parsedResult) => {
+    if (Array.isArray(extractedSkills) && extractedSkills.length > 0) {
+      setSkills(prev => Array.from(new Set([...prev, ...extractedSkills])));
+    }
+    if (parsedResult) {
+      if (parsedResult.summary && !bio) {
+        setBio(parsedResult.summary);
+      }
+      if (parsedResult.targetRole && !targetRole) {
+        setTargetRole(parsedResult.targetRole);
+      }
+    }
+    setAutofillSuccess(true);
+    setTimeout(() => setAutofillSuccess(false), 4000);
+  };
+
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+      {/* AI Resume Upload Modal */}
+      <ResumeUploadModal
+        isOpen={isResumeModalOpen}
+        onClose={() => setIsResumeModalOpen(false)}
+        onApplyExtractedSkills={handleApplyExtractedSkills}
+      />
+
       <div className="pro-card max-w-2xl w-full rounded-2xl bg-white dark:bg-[#162030] border border-slate-200 dark:border-[#233147] shadow-2xl overflow-hidden my-8 relative flex flex-col max-h-[90vh] text-slate-900 dark:text-white">
         
         {/* Header Preview Banner */}
-        <div className="p-6 bg-slate-900 dark:bg-[#131c2e] text-white relative flex-none border-b border-slate-800 dark:border-[#233147]">
+        <div className="p-6 bg-slate-900 dark:bg-[#131c2e] text-white relative flex-none border-b border-slate-800 dark:border-[#233147] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <button 
             onClick={onClose}
             className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 dark:hover:bg-[#192436] rounded-lg transition"
@@ -157,7 +183,28 @@ export default function ProfileEditModal({ isOpen, onClose, user, onProfileUpdat
               </p>
             </div>
           </div>
+
+          <div className="pr-8">
+            <button
+              type="button"
+              onClick={() => setIsResumeModalOpen(true)}
+              className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-extrabold text-xs shadow-md transition flex items-center space-x-1.5 active:scale-95"
+            >
+              <Sparkles className="w-4 h-4 text-indigo-200" />
+              <span>⚡ Autofill via Resume</span>
+            </button>
+          </div>
         </div>
+
+        {autofillSuccess && (
+          <div className="p-3 bg-indigo-950 border-b border-indigo-800 text-indigo-200 text-xs font-semibold flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <Sparkles className="w-4 h-4 text-indigo-400" />
+              <span>Resume parsed! Technical skills & profile information applied to form.</span>
+            </div>
+            <span className="text-[10px] bg-indigo-600 text-white px-2 py-0.5 rounded font-bold">AUTOFILL COMPLETE</span>
+          </div>
+        )}
 
         {/* Navigation Tabs */}
         <div className="flex border-b border-slate-200 dark:border-[#233147] bg-slate-50 dark:bg-[#0d131f] px-6 gap-2 flex-none overflow-x-auto">

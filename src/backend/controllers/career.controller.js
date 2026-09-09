@@ -29,8 +29,8 @@ async function getRoadmap(req, res, next) {
       orderBy: { generatedAt: 'desc' },
     });
 
-    if (!roadmap) {
-      // Fall back to any available roadmap in the DB
+    if (!roadmap && (studentId === 'student1' || studentId === 'user_101')) {
+      // Fall back to demo student1 roadmap only for demo requests
       roadmap = await prisma.careerRoadmap.findFirst({
         orderBy: { generatedAt: 'desc' },
       });
@@ -39,7 +39,7 @@ async function getRoadmap(req, res, next) {
     if (!roadmap) {
       return res.status(404).json({
         success: false,
-        error: { code: 'ROADMAP_NOT_FOUND', message: `No roadmap found` },
+        error: { code: 'ROADMAP_NOT_FOUND', message: `No roadmap found for student ${studentId}` },
       });
     }
 
@@ -71,10 +71,13 @@ async function saveRoadmap(req, res, next) {
     }
 
     if (!studentProfile) {
-      // Auto-create student profile if user exists
-      const user = await prisma.user.findFirst({
-        where: { OR: [{ id: studentId }, { role: 'STUDENT' }] }
+      // Auto-create student profile specifically for this user if user exists
+      const user = await prisma.user.findUnique({
+        where: { id: studentId }
+      }) || await prisma.user.findFirst({
+        where: { id: studentId }
       });
+
       if (user) {
         studentProfile = await prisma.studentProfile.create({
           data: {
