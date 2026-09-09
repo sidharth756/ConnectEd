@@ -14,6 +14,114 @@ import {
 import { aiAssistantApi } from '../services/api';
 import AlumniProfileModal from './AlumniProfileModal';
 
+// Helper function to render formatted inline text (bold, code, italic)
+function renderInlineMarkdown(str) {
+  if (!str) return null;
+  const parts = str.split(/(\*\*.*?\*\*|`.*?`|\*.*?\*)/g);
+  return parts.map((part, idx) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return (
+        <strong key={idx} className="font-extrabold text-slate-900 dark:text-white">
+          {part.slice(2, -2)}
+        </strong>
+      );
+    }
+    if (part.startsWith('`') && part.endsWith('`')) {
+      return (
+        <code key={idx} className="px-1.5 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-300 font-mono text-[11px] border border-indigo-200/50 dark:border-indigo-800/50">
+          {part.slice(1, -1)}
+        </code>
+      );
+    }
+    if (part.startsWith('*') && part.endsWith('*')) {
+      return (
+        <em key={idx} className="italic text-slate-700 dark:text-slate-300">
+          {part.slice(1, -1)}
+        </em>
+      );
+    }
+    return part;
+  });
+}
+
+function formatCopilotMessageContent(text) {
+  if (!text) return null;
+
+  const lines = text.split('\n');
+  const renderedElements = [];
+  let currentListItems = [];
+
+  const flushList = (keyPrefix) => {
+    if (currentListItems.length > 0) {
+      renderedElements.push(
+        <ul key={`list_${keyPrefix}`} className="my-2 space-y-1.5 pl-0.5">
+          {currentListItems.map((item, idx) => (
+            <li key={idx} className="flex items-start space-x-2 text-[12px] leading-relaxed text-slate-700 dark:text-slate-200">
+              <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 flex-none mt-1.5 shadow-xs" />
+              <span className="flex-1">{renderInlineMarkdown(item)}</span>
+            </li>
+          ))}
+        </ul>
+      );
+      currentListItems = [];
+    }
+  };
+
+  lines.forEach((line, index) => {
+    const trimmed = line.trim();
+
+    if (!trimmed) {
+      flushList(index);
+      renderedElements.push(<div key={`br_${index}`} className="h-1" />);
+      return;
+    }
+
+    // Check for Headings: ### H3 or ## H2
+    if (trimmed.startsWith('### ') || trimmed.startsWith('## ')) {
+      flushList(index);
+      const title = trimmed.replace(/^#{2,3}\s+/, '');
+      renderedElements.push(
+        <div key={`h3_${index}`} className="mt-3.5 mb-2 pt-2.5 border-t border-slate-200/70 dark:border-slate-800/70 first:border-t-0 first:pt-0">
+          <h4 className="font-extrabold text-[13px] tracking-tight text-indigo-600 dark:text-indigo-400 flex items-center space-x-1.5">
+            <span>{renderInlineMarkdown(title)}</span>
+          </h4>
+        </div>
+      );
+      return;
+    }
+
+    // Check for Subheadings: #### H4
+    if (trimmed.startsWith('#### ')) {
+      flushList(index);
+      const title = trimmed.replace(/^#{4}\s+/, '');
+      renderedElements.push(
+        <h5 key={`h4_${index}`} className="font-extrabold text-[12px] text-slate-900 dark:text-slate-100 mt-2.5 mb-1.5">
+          {renderInlineMarkdown(title)}
+        </h5>
+      );
+      return;
+    }
+
+    // Check for Bullet items: - or * or number dot like "1. "
+    const listMatch = trimmed.match(/^(?:[-*]|\d+\.)\s+(.*)/);
+    if (listMatch) {
+      currentListItems.push(listMatch[1]);
+      return;
+    }
+
+    // Normal paragraph line
+    flushList(index);
+    renderedElements.push(
+      <p key={`p_${index}`} className="text-[12px] leading-relaxed text-slate-700 dark:text-slate-200 mb-1">
+        {renderInlineMarkdown(trimmed)}
+      </p>
+    );
+  });
+
+  flushList('end');
+  return <div className="space-y-1 text-xs">{renderedElements}</div>;
+}
+
 export default function AINetworkingAssistant({ isOpen, onClose }) {
   const [messages, setMessages] = useState([
     {
@@ -130,12 +238,23 @@ export default function AINetworkingAssistant({ isOpen, onClose }) {
                 <span>•</span>
                 <span>{msg.timestamp}</span>
               </div>
-              <div className={`relative max-w-[90%] p-3.5 rounded-2xl text-xs leading-relaxed ${
+              <div className={`relative max-w-[92%] p-4 rounded-2xl text-xs leading-relaxed ${
                 msg.sender === 'user'
                   ? 'bg-indigo-600 text-white font-semibold shadow-md'
                   : 'bg-white dark:bg-[#162030] text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-[#233147] shadow-sm dark:shadow-md'
               }`}>
-                <div className="whitespace-pre-wrap">{msg.text}</div>
+                {msg.sender === 'assistant' && (
+                  <div className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 mb-2.5 border border-indigo-500/20">
+                    <Sparkles className="w-2.5 h-2.5" />
+                    <span>Qwen 2.5 RAG Engine</span>
+                  </div>
+                )}
+
+                {msg.sender === 'user' ? (
+                  <div className="whitespace-pre-wrap">{msg.text}</div>
+                ) : (
+                  formatCopilotMessageContent(msg.text)
+                )}
 
                 {/* Suggested Alumni Cards List (NLP / Gemini Match Result) */}
                 {alumniList.length > 0 && (
