@@ -16,29 +16,30 @@ from src.ai.services.alumni_search import search_alumni_with_profile
 # ==============================================================================
 
 STUDENT_PROFILE = StudentProfile(
-    name="Sidharth",
-    bio="",
-    skills=[],
-    targetRole="",
-    targetCompanies=[""]
+    name="Sidharth (@sidharth756)",
+    bio="Full Stack Software & AI Engineer specializing in Node.js, Python, React, FastAPI, and Generative AI agents.",
+    skills=["Python", "React", "Node.js", "FastAPI", "Generative AI"],
+    targetRole="AI Engineer",
+    targetCompanies=["Google", "Microsoft", "OpenAI"]
 )
 
-PROMPT = "find me alumni similar to my skill and similar"
+PROMPT = "find me AI engineers and mentors like @sidharth756"
 
 # ==============================================================================
 
 def run_my_test():
     print("==================================================================")
-    print(" ConnectEd AI Engine - Search with Match Percentages & Recommendations")
+    print(" ConnectEd AI Engine - Search Test for @sidharth756")
     print("==================================================================")
     print("\n--- 👤 STUDENT PROFILE ---")
     print(f"  Name:             {STUDENT_PROFILE.name}")
+    print(f"  Bio:              {STUDENT_PROFILE.bio}")
     print(f"  Profile Skills:   {', '.join(STUDENT_PROFILE.skills)}")
     print(f"  Target Role:      {STUDENT_PROFILE.targetRole}")
     
     print(f"\n--- 💬 SEARCH PROMPT ---\n  \"{PROMPT}\"")
 
-    print("\nSearching...")
+    print("\nSearching via Gemini LLM...")
     result = search_alumni_with_profile(PROMPT, STUDENT_PROFILE)
     
     print("\n==================================================================")
@@ -49,11 +50,11 @@ def run_my_test():
     print(f"Detected Companies:   {', '.join(result.extractedIntent.targetCompanies) if result.extractedIntent.targetCompanies else 'None'}")
     print(f"Total Matches Found:  {len(result.matches)}\n")
 
-    for idx, match in enumerate(result.matches):
+    for idx, match in enumerate(result.matches[:6]):
         tag = "[SIMILAR RECOMMENDATION]" if match.isSimilarRecommendation else f"[{match.matchPercentage} MATCH]"
         print(f"  #{idx + 1}: {match.name} {tag}")
         print(f"      Role & Company: {match.role} @ {match.company}")
-        print(f"      Matched Skills: {', '.join(match.matchedSkills) if match.matchedSkills else 'Company / Domain Match'}")
+        print(f"      Matched Skills: {', '.join(match.matchedSkills) if match.matchedSkills else 'Domain Match'}")
         print(f"      Match Reason:   {match.reason}")
         print("  " + "-" * 60)
 
